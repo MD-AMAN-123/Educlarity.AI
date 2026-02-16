@@ -1,4 +1,4 @@
- import { GoogleGenAI, Modality, Type, Tool } from "@google/genai";
+import { GoogleGenAI, Modality, Type, Tool } from "@google/genai";
 import type { GenerateContentResponse } from "@google/genai";
 import {
   CoachMode,
