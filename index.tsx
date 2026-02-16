@@ -13,8 +13,8 @@ if (!rootElement) {
 
 ReactDOM.createRoot(rootElement).render(
   <React.StrictMode>
-    <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID}>
-      <App />
-    </GoogleOAuthProvider>
+     <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID!}>
+  <App />
+</GoogleOAuthProvider>
   </React.StrictMode>
 );
