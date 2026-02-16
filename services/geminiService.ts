@@ -1,6 +1,4 @@
-import { generateCoachResponse, blobToBase64, generateVisualAid }
-from '../services/geminiService';
-import { GoogleGenAI, Modality, Type, Tool } from "@google/genai";
+ import { GoogleGenAI } from "@google/genai";
 import type { GenerateContentResponse } from "@google/genai";
 import {
   CoachMode,
@@ -8,47 +6,40 @@ import {
   QuizQuestion,
   LearningNode,
   TeacherInsight,
-  StudyBot,
-  Student,
 } from "../types";
 
-/* ======================================================
-   ✅ SAFE ENV HANDLING (NO WHITE SCREEN)
-====================================================== */
+/* ===============================
+   SAFE ENV
+================================ */
 
 const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
-
-if (!apiKey) {
-  console.warn("⚠️ VITE_GEMINI_API_KEY is missing.");
-}
 
 const ai = new GoogleGenAI({
   apiKey: apiKey || "",
 });
 
-/* ======================================================
-   ✅ SAFE RETRY WRAPPER
-====================================================== */
+/* ===============================
+   RETRY WRAPPER
+================================ */
 
-async function retryWithBackoff<T>(
+async function retry<T>(
   operation: () => Promise<T>,
-  retries = 2,
-  delay = 2000
+  retries = 2
 ): Promise<T> {
   try {
     return await operation();
   } catch (err) {
     if (retries <= 0) throw err;
-    await new Promise((res) => setTimeout(res, delay));
-    return retryWithBackoff(operation, retries - 1, delay * 2);
+    await new Promise((r) => setTimeout(r, 2000));
+    return retry(operation, retries - 1);
   }
 }
 
-/* ======================================================
-   ✅ SAFE JSON PARSER
-====================================================== */
+/* ===============================
+   JSON SAFE PARSER
+================================ */
 
-function parseJsonSafe<T>(text: string | undefined, fallback: T): T {
+function safeParse<T>(text: string | undefined, fallback: T): T {
   if (!text) return fallback;
   try {
     return JSON.parse(text) as T;
@@ -57,159 +48,171 @@ function parseJsonSafe<T>(text: string | undefined, fallback: T): T {
   }
 }
 
-/* ======================================================
-   ✅ COACH RESPONSE
-====================================================== */
+/* ===============================
+   COACH
+================================ */
 
-export const generateCoachResponse = async (
+export async function generateCoachResponse(
   history: { role: string; text: string }[],
   currentMessage: string,
   mode: CoachMode,
   language: Language
-): Promise<{ text: string }> => {
+): Promise<{ text: string }> {
   try {
-    const response = await retryWithBackoff<GenerateContentResponse>(() =>
+    const res = await retry<GenerateContentResponse>(() =>
       ai.models.generateContent({
         model: "gemini-1.5-flash",
         contents: currentMessage,
       })
     );
 
-    return {
-      text: response.text || "No response generated.",
-    };
-  } catch (error) {
-    console.error("Coach Error:", error);
-    return { text: "AI service temporarily unavailable." };
+    return { text: res.text ?? "No response." };
+  } catch {
+    return { text: "AI temporarily unavailable." };
   }
-};
+}
 
-/* ======================================================
-   ✅ SUPPORT RESPONSE
-====================================================== */
+/* ===============================
+   SUPPORT
+================================ */
 
-export const generateSupportResponse = async (
+export async function generateSupportResponse(
   history: { role: string; text: string }[],
-  currentMessage: string
-): Promise<string> => {
+  message: string
+): Promise<string> {
   try {
-    const response = await retryWithBackoff<GenerateContentResponse>(() =>
+    const res = await retry<GenerateContentResponse>(() =>
       ai.models.generateContent({
         model: "gemini-1.5-flash",
-        contents: currentMessage,
+        contents: message,
       })
     );
 
-    return response.text || "No response.";
-  } catch (error) {
-    console.error("Support Error:", error);
-    return "Support system temporarily unavailable.";
+    return res.text ?? "No response.";
+  } catch {
+    return "Support unavailable.";
   }
-};
+}
 
-/* ======================================================
-   ✅ VISUAL AID GENERATION
-====================================================== */
+/* ===============================
+   VISUAL AID
+================================ */
 
-export const generateVisualAid = async (
+export async function generateVisualAid(
   topic: string
-): Promise<string | undefined> => {
+): Promise<string | undefined> {
   try {
-    const response = await retryWithBackoff<GenerateContentResponse>(() =>
+    const res = await retry<GenerateContentResponse>(() =>
       ai.models.generateContent({
         model: "gemini-1.5-flash",
-        contents: `Create a simple educational explanation about ${topic}`,
+        contents: `Explain ${topic} clearly`,
       })
     );
 
-    return response.text;
+    return res.text;
   } catch {
     return undefined;
   }
-};
+}
 
-/* ======================================================
-   ✅ LEARNING PATH
-====================================================== */
+/* ===============================
+   LEARNING PATH
+================================ */
 
-export const generateLearningPath = async (
+export async function generateLearningPath(
   subject: string
-): Promise<LearningNode[]> => {
+): Promise<LearningNode[]> {
   try {
-    const response = await retryWithBackoff<GenerateContentResponse>(() =>
+    const res = await retry<GenerateContentResponse>(() =>
       ai.models.generateContent({
         model: "gemini-1.5-flash",
-        contents: `Create structured learning path for ${subject} in JSON array format`,
+        contents: `Create JSON learning path for ${subject}`,
       })
     );
 
-    return parseJsonSafe<LearningNode[]>(response.text, []);
+    return safeParse<LearningNode[]>(res.text, []);
   } catch {
     return [];
   }
-};
+}
 
-/* ======================================================
-   ✅ TEACHER INSIGHTS
-====================================================== */
+/* ===============================
+   TEACHER INSIGHTS
+================================ */
 
-export const generateTeacherInsights = async (
-  studentData: string
-): Promise<TeacherInsight[]> => {
+export async function generateTeacherInsights(
+  data: string
+): Promise<TeacherInsight[]> {
   try {
-    const response = await retryWithBackoff<GenerateContentResponse>(() =>
+    const res = await retry<GenerateContentResponse>(() =>
       ai.models.generateContent({
         model: "gemini-1.5-flash",
-        contents: `Analyze this student data and return insights in JSON array: ${studentData}`,
+        contents: `Analyze data and return JSON insights: ${data}`,
       })
     );
 
-    return parseJsonSafe<TeacherInsight[]>(response.text, []);
+    return safeParse<TeacherInsight[]>(res.text, []);
   } catch {
     return [];
   }
-};
+}
 
-/* ======================================================
-   ✅ QUIZ GENERATOR
-====================================================== */
+/* ===============================
+   QUIZ
+================================ */
 
-export const generateQuiz = async (
+export async function generateQuiz(
   topic: string,
   difficulty: string
-): Promise<QuizQuestion[]> => {
+): Promise<QuizQuestion[]> {
   try {
-    const response = await retryWithBackoff<GenerateContentResponse>(() =>
+    const res = await retry<GenerateContentResponse>(() =>
       ai.models.generateContent({
         model: "gemini-1.5-flash",
-        contents: `Generate quiz about ${topic} difficulty ${difficulty} in JSON array format`,
+        contents: `Generate JSON quiz about ${topic} difficulty ${difficulty}`,
       })
     );
 
-    return parseJsonSafe<QuizQuestion[]>(response.text, []);
+    return safeParse<QuizQuestion[]>(res.text, []);
   } catch {
     return [];
   }
-};
+}
+/* ===============================
+   BLOB TO BASE64
+================================ */
 
-/* ======================================================
-   ✅ ORIGINALITY CHECK
-====================================================== */
+export function blobToBase64(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const base64 = (reader.result as string).split(",")[1];
+      resolve(base64);
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+}
 
-export const checkOriginality = async (
+
+/* ===============================
+   ORIGINALITY
+================================ */
+
+export async function checkOriginality(
   text: string
-): Promise<{ score: number; analysis: string }> => {
+): Promise<{ score: number; analysis: string }> {
   try {
-    const response = await retryWithBackoff<GenerateContentResponse>(() =>
+    const res = await retry<GenerateContentResponse>(() =>
       ai.models.generateContent({
         model: "gemini-1.5-flash",
-        contents: `Check originality of this text: ${text.substring(0, 1000)}`,
+        contents: `Check originality: ${text.substring(0, 500)}`,
       })
     );
 
     return {
       score: 85,
-      analysis: response.text || "Analysis complete.",
+      analysis: res.text ?? "Analysis complete.",
     };
   } catch {
     return {
@@ -217,4 +220,4 @@ export const checkOriginality = async (
       analysis: "Error checking originality.",
     };
   }
-};
+}
