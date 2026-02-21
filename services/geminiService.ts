@@ -1,4 +1,4 @@
- import { GoogleGenAI } from "@google/genai";
+import { GoogleGenAI } from "@google/genai";
 import type { GenerateContentResponse } from "@google/genai";
 import {
   CoachMode,
@@ -6,6 +6,7 @@ import {
   QuizQuestion,
   LearningNode,
   TeacherInsight,
+  Student
 } from "../types";
 
 /* ===============================
@@ -61,7 +62,7 @@ export async function generateCoachResponse(
   try {
     const res = await retry<GenerateContentResponse>(() =>
       ai.models.generateContent({
-        model: "gemini-1.5-flash",
+        model: "gemini-flash-latest",
         contents: currentMessage,
       })
     );
@@ -78,18 +79,58 @@ export async function generateCoachResponse(
 
 export async function generateSupportResponse(
   history: { role: string; text: string }[],
-  message: string
+  message: string,
+  students?: Student[],
+  actions?: {
+    addStudent: (data: any) => Promise<string>;
+    removeStudent: (name: string) => Promise<string>;
+  }
 ): Promise<string> {
   try {
+    const studentList = students
+      ? students.map(s => `- ${s.name} (ID: ${s.id}, Grade: ${s.grade})`).join('\n')
+      : "No students listed.";
+
+    const systemPrompt = `You are the Educlarity Support Bot.
+Current Student Data:
+${studentList}
+
+If the user asks to add a student, you MUST return a plain text response starting with "ACTION_ADD:" followed by a JSON object with name and grade.
+If the user asks to remove a student, you MUST return a plain text response starting with "ACTION_REMOVE:" followed by the student name.
+Otherwise, answer normally.`;
+
     const res = await retry<GenerateContentResponse>(() =>
       ai.models.generateContent({
-        model: "gemini-1.5-flash",
-        contents: message,
+        model: "gemini-flash-latest",
+        contents: [
+          { role: "user", parts: [{ text: systemPrompt }] },
+          ...history.map(h => ({ role: h.role === "model" ? "model" : "user", parts: [{ text: h.text }] })),
+          { role: "user", parts: [{ text: message }] }
+        ],
       })
     );
 
-    return res.text ?? "No response.";
-  } catch {
+    let text = res.text ?? "No response.";
+
+    // Handle internal triggers for actions if AI returns them
+    if (text.startsWith("ACTION_ADD:") && actions?.addStudent) {
+      try {
+        const jsonStr = text.replace("ACTION_ADD:", "").trim();
+        const data = JSON.parse(jsonStr);
+        return await actions.addStudent(data);
+      } catch {
+        return "I tried to add the student but the data was invalid.";
+      }
+    }
+
+    if (text.startsWith("ACTION_REMOVE:") && actions?.removeStudent) {
+      const name = text.replace("ACTION_REMOVE:", "").trim();
+      return await actions.removeStudent(name);
+    }
+
+    return text;
+  } catch (err) {
+    console.error("Gemini Support Error:", err);
     return "Support unavailable.";
   }
 }
@@ -104,7 +145,7 @@ export async function generateVisualAid(
   try {
     const res = await retry<GenerateContentResponse>(() =>
       ai.models.generateContent({
-        model: "gemini-1.5-flash",
+        model: "gemini-flash-latest",
         contents: `Explain ${topic} clearly`,
       })
     );
@@ -125,7 +166,7 @@ export async function generateLearningPath(
   try {
     const res = await retry<GenerateContentResponse>(() =>
       ai.models.generateContent({
-        model: "gemini-1.5-flash",
+        model: "gemini-flash-latest",
         contents: `Create JSON learning path for ${subject}`,
       })
     );
@@ -146,7 +187,7 @@ export async function generateTeacherInsights(
   try {
     const res = await retry<GenerateContentResponse>(() =>
       ai.models.generateContent({
-        model: "gemini-1.5-flash",
+        model: "gemini-flash-latest",
         contents: `Analyze data and return JSON insights: ${data}`,
       })
     );
@@ -168,7 +209,7 @@ export async function generateQuiz(
   try {
     const res = await retry<GenerateContentResponse>(() =>
       ai.models.generateContent({
-        model: "gemini-1.5-flash",
+        model: "gemini-flash-latest",
         contents: `Generate JSON quiz about ${topic} difficulty ${difficulty}`,
       })
     );
@@ -205,7 +246,7 @@ export async function checkOriginality(
   try {
     const res = await retry<GenerateContentResponse>(() =>
       ai.models.generateContent({
-        model: "gemini-1.5-flash",
+        model: "gemini-flash-latest",
         contents: `Check originality: ${text.substring(0, 500)}`,
       })
     );
