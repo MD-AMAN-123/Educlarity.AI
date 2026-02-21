@@ -208,14 +208,14 @@ const CustomerSupport: React.FC<CustomerSupportProps> = ({ isTeacherAuthenticate
                    <div className="p-2 bg-indigo-50 dark:bg-indigo-900/30 rounded-lg text-indigo-600 dark:text-indigo-400"><Mail size={20} /></div>
                    <div>
                       <p className="text-xs text-slate-400 uppercase font-bold">Email Us</p>
-                      <p className="font-medium">support@educlarity.ai</p>
+                      <p className="font-medium">support@educlarity.com</p>
                    </div>
                 </div>
                 <div className="flex items-center gap-3 text-slate-600 dark:text-slate-300">
                    <div className="p-2 bg-purple-50 dark:bg-purple-900/30 rounded-lg text-purple-600 dark:text-purple-400"><Phone size={20} /></div>
                    <div>
                       <p className="text-xs text-slate-400 uppercase font-bold">Call Us (India)</p>
-                      <p className="font-medium">+91 1800-EDU-HELP</p>
+                      <p className="font-medium">+91 90590 89036</p>
                    </div>
                 </div>
              </div>
