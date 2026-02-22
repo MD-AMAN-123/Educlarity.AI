@@ -104,12 +104,14 @@ export async function generateCoachResponse(
     contents[contents.length - 1].parts.push({ text: "Hello" });
   }
 
-  // Define fallback chain
+  // Define fallback chain based exactly on the user's authorized models
   const endpoints = [
-    { ver: "v1beta", model: "gemini-1.5-flash" },
+    { ver: "v1beta", model: "gemini-2.5-flash" },
+    { ver: "v1", model: "gemini-2.5-flash" },
     { ver: "v1beta", model: "gemini-2.0-flash" },
-    { ver: "v1", model: "gemini-pro" },
-    { ver: "v1beta", model: "gemini-1.5-flash-latest" }
+    { ver: "v1", model: "gemini-2.0-flash" },
+    { ver: "v1beta", model: "gemini-2.5-pro" },
+    { ver: "v1beta", model: "gemini-2.0-flash-lite" }
   ];
 
   let lastError = "";
@@ -223,7 +225,7 @@ export async function generateVisualAid(
   try {
     const res = await retry<GenerateContentResponse>(() =>
       ai.models.generateContent({
-        model: "gemini-flash-latest",
+        model: "gemini-2.5-flash",
         contents: `Explain ${topic} clearly`,
       })
     );
@@ -292,7 +294,7 @@ export async function generateLearningPath(
   try {
     const res = await retry<GenerateContentResponse>(() =>
       ai.models.generateContent({
-        model: "gemini-1.5-flash",
+        model: "gemini-2.5-flash",
         contents: [{ role: "user", parts: [{ text: prompt }] }],
       })
     );
@@ -401,7 +403,7 @@ export async function checkOriginality(
   try {
     const res = await retry<GenerateContentResponse>(() =>
       ai.models.generateContent({
-        model: "gemini-flash-latest",
+        model: "gemini-2.5-flash",
         contents: `Check originality: ${text.substring(0, 500)}`,
       })
     );
