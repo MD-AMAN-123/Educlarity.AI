@@ -128,7 +128,7 @@ const ConceptCoach: React.FC<ConceptCoachProps> = ({ initialTopic, onClearTopic 
       };
 
       mediaRecorder.onstop = async () => {
-        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/wav' }); // or audio/webm
+        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
         const base64 = await blobToBase64(audioBlob);
         handleSendMessage('', base64);
       };

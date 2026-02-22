@@ -77,43 +77,40 @@ export async function generateCoachResponse(
   const systemPrompt = `You are "Educlarity AI", a brilliant and empathetic conceptual coach. 
     Your goal is to help students master complex topics through the ${mode} method.
     Current Language: ${language}.
-    If mode is LEARNING: Explain concepts simply using analogies, then ask ONE challenging conceptual question.
-    If mode is ANSWER: Evaluate the student's explanation, provide feedback, and correct any misconceptions gently.
-    Keep your responses concise, encouraging, and professional.
-    Since this is a voice-enabled assistant, keep responses structured and easy to listen to.`;
+    LEARNING: Explain concepts simply using analogies, then ask ONE conceptual question.
+    ANSWER: Evaluate the student's explanation and provide feedback.
+    Keep responses concise and easy to listen to.`;
 
   try {
-    const contents: any[] = [
-      { role: "user", parts: [{ text: systemPrompt }] },
-      ...history.map(h => ({
-        role: h.role === "model" ? "model" : "user",
-        parts: [{ text: h.text }]
-      }))
-    ];
-
     const currentParts: any[] = [{ text: currentMessage }];
     if (audioBase64) {
       currentParts.push({
         inlineData: {
-          mimeType: "audio/wav",
+          mimeType: "audio/webm", // MediaRecorder defaults to webm in most browsers
           data: audioBase64
         }
       });
     }
 
-    contents.push({ role: "user", parts: currentParts });
-
     const res = await retry<GenerateContentResponse>(() =>
       ai.models.generateContent({
-        model: "gemini-1.5-flash",
-        contents: contents,
+        model: "gemini-flash-latest",
+        contents: [
+          { role: "user", parts: [{ text: systemPrompt }] },
+          ...history.map(h => ({
+            role: h.role === "model" ? "model" : "user",
+            parts: [{ text: h.text }]
+          })),
+          { role: "user", parts: currentParts }
+        ],
       })
     );
 
     return { text: res.text ?? "I'm sorry, I couldn't process that." };
-  } catch (err) {
+  } catch (err: any) {
     console.error("Coach API Error:", err);
-    return { text: "Voice assistant is currently offline. Please try typing your question." };
+    const errorMsg = err?.message || "Internal API Error";
+    return { text: `Voice assistant error: ${errorMsg}. Please ensure your API key and network are stable.` };
   }
 }
 
