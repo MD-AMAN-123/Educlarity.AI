@@ -13,10 +13,17 @@ import {
    SAFE ENV
 ================================ */
 
-const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+const getApiKey = () => {
+  return import.meta.env.VITE_GEMINI_API_KEY ||
+    (typeof process !== 'undefined' ? process.env.GEMINI_API_KEY : null) ||
+    (typeof process !== 'undefined' ? process.env.API_KEY : null) ||
+    "";
+};
+
+const apiKey = getApiKey();
 
 const ai = new GoogleGenAI({
-  apiKey: apiKey || "",
+  apiKey: apiKey,
 });
 
 /* ===============================
@@ -74,43 +81,51 @@ export async function generateCoachResponse(
   language: Language,
   audioBase64?: string
 ): Promise<{ text: string }> {
-  const systemPrompt = `You are "Educlarity AI", a brilliant and empathetic conceptual coach. 
-    Your goal is to help students master complex topics through the ${mode} method.
-    Current Language: ${language}.
-    LEARNING: Explain concepts simply using analogies, then ask ONE conceptual question.
-    ANSWER: Evaluate the student's explanation and provide feedback.
-    Keep responses concise and easy to listen to.`;
+  if (!apiKey || apiKey.length < 10) {
+    return { text: "Educlarity Error: Gemini API Key is missing or invalid. Please check your .env.local file and restart the dev server." };
+  }
+
+  const systemInstructions = `You are "Educlarity AI", a professional conceptual coach.
+    Mode: ${mode}. Language: ${language}.
+    Follow the Socratic method: explain with analogies, then ask a conceptual question.
+    Be concise and encouraging.`;
 
   try {
-    const currentParts: any[] = [{ text: currentMessage }];
+    const userParts: any[] = [];
+    if (currentMessage) userParts.push({ text: currentMessage });
     if (audioBase64) {
-      currentParts.push({
+      userParts.push({
         inlineData: {
-          mimeType: "audio/webm", // MediaRecorder defaults to webm in most browsers
+          mimeType: "audio/webm",
           data: audioBase64
         }
       });
     }
 
+    // Must have at least one part for the current turn
+    const finalUserParts = userParts.length > 0 ? userParts : [{ text: "Hello, I am ready to learn." }];
+
     const res = await retry<GenerateContentResponse>(() =>
       ai.models.generateContent({
-        model: "gemini-flash-latest",
+        model: "gemini-1.5-flash",
         contents: [
-          { role: "user", parts: [{ text: systemPrompt }] },
           ...history.map(h => ({
             role: h.role === "model" ? "model" : "user",
             parts: [{ text: h.text }]
           })),
-          { role: "user", parts: currentParts }
+          { role: "user", parts: finalUserParts }
         ],
+        config: {
+          systemInstruction: { parts: [{ text: systemInstructions }] }
+        }
       })
     );
 
-    return { text: res.text ?? "I'm sorry, I couldn't process that." };
+    return { text: res.text ?? "I understood your input, but I don't have a specific response yet." };
   } catch (err: any) {
-    console.error("Coach API Error:", err);
-    const errorMsg = err?.message || "Internal API Error";
-    return { text: `Voice assistant error: ${errorMsg}. Please ensure your API key and network are stable.` };
+    console.error("CRITICAL COACH ERROR:", err);
+    const msg = err?.message || "Unknown error";
+    return { text: `Service Error: ${msg}. If this persists, please try a hard refresh (Ctrl+F5).` };
   }
 }
 
