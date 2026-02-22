@@ -43,9 +43,19 @@ async function retry<T>(
 function safeParse<T>(text: string | undefined, fallback: T): T {
   if (!text) return fallback;
   try {
-    // Extract JSON from markdown or preamble/postamble
-    const jsonMatch = text.match(/\[[\s\S]*\]|\{[\s\S]*\}/);
-    const cleanText = jsonMatch ? jsonMatch[0] : text;
+    // Look for the first '[' and last ']' for arrays, or '{' and '}' for objects
+    const firstBracket = text.indexOf('[');
+    const lastBracket = text.lastIndexOf(']');
+    const firstBrace = text.indexOf('{');
+    const lastBrace = text.lastIndexOf('}');
+
+    let cleanText = text;
+    if (firstBracket !== -1 && lastBracket !== -1 && (firstBrace === -1 || firstBracket < firstBrace)) {
+      cleanText = text.substring(firstBracket, lastBracket + 1);
+    } else if (firstBrace !== -1 && lastBrace !== -1) {
+      cleanText = text.substring(firstBrace, lastBrace + 1);
+    }
+
     return JSON.parse(cleanText) as T;
   } catch {
     console.error("Failed to parse AI response as JSON:", text);
@@ -167,66 +177,67 @@ export async function generateVisualAid(
 export async function generateLearningPath(
   subject: string
 ): Promise<LearningNode[]> {
-  const prompt = `Create a professional and comprehensive learning path for "${subject}" as a JSON array of 5-7 milestones.
-    Each milestone must strictly follow this TypeScript interface:
+  const prompt = `Create a professional and comprehensive learning path for "${subject}" as a JSON array of 6-8 milestones.
+    Each milestone must follow this structure:
     {
-      "id": string; // unique short ID like "basics", "advanced"
-      "title": string; // engaging title
-      "description": string; // 1-2 sentences on what will be covered
-      "status": "UNLOCKED" | "IN_PROGRESS" | "LOCKED";
-      "difficulty": "Beginner" | "Intermediate" | "Advanced";
-      "rationale": string; // why this specific step is crucial for mastering ${subject}
+      "id": string,
+      "title": string,
+      "description": string,
+      "status": "UNLOCKED" | "IN_PROGRESS" | "LOCKED",
+      "difficulty": "Beginner" | "Intermediate" | "Advanced",
+      "rationale": string
     }
-    
-    Guidelines:
-    1. Provide a logical sequence from fundamentals to mastery.
-    2. The first 3 milestones should be "UNLOCKED" to make the path feel immediately accessible.
-    3. Ensure the JSON is perfectly formatted and contains NO other text.`;
+    Make the first 4 milestones "UNLOCKED" for immediate access.
+    RETURN ONLY THE JSON ARRAY. NO MARKDOWN. NO PREAMBLE.`;
+
+  const fallbackPath: LearningNode[] = [
+    {
+      id: '1',
+      title: `Fundamentals of ${subject}`,
+      description: `Grasp the essential building blocks and primary concepts that define ${subject}.`,
+      status: 'IN_PROGRESS',
+      difficulty: 'Beginner',
+      rationale: 'A solid foundation is required before moving to complex topics.'
+    },
+    {
+      id: '2',
+      title: `Applied Principles of ${subject}`,
+      description: `Understand how the core theories are applied in practical, real-world scenarios.`,
+      status: 'UNLOCKED',
+      difficulty: 'Intermediate',
+      rationale: 'Practical application cements theoretical knowledge.'
+    },
+    {
+      id: '3',
+      title: `Advanced ${subject} Dynamics`,
+      description: `Explore the intricate relationships and advanced structures within ${subject}.`,
+      status: 'UNLOCKED',
+      difficulty: 'Advanced',
+      rationale: 'Mastery requires understanding the complex interplay of advanced variables.'
+    },
+    {
+      id: '4',
+      title: `Strategic Mastery of ${subject}`,
+      description: `Develop high-level strategies and holistic overview of the field.`,
+      status: 'UNLOCKED',
+      difficulty: 'Advanced',
+      rationale: 'The final step is synthesizing all knowledge into expert-level execution.'
+    }
+  ];
 
   try {
     const res = await retry<GenerateContentResponse>(() =>
       ai.models.generateContent({
-        model: "gemini-flash-latest",
+        model: "gemini-1.5-flash",
         contents: [{ role: "user", parts: [{ text: prompt }] }],
       })
     );
 
     const nodes = safeParse<LearningNode[]>(res.text, []);
-
-    // Add fallback if AI fails to give us nodes
-    if (nodes.length === 0) {
-      return [
-        {
-          id: '1',
-          title: `Introduction to ${subject}`,
-          description: `Master the essential fundamentals and core principles of ${subject}.`,
-          status: 'IN_PROGRESS',
-          difficulty: 'Beginner',
-          rationale: 'Every expert starts with a strong grasp of the basics.'
-        },
-        {
-          id: '2',
-          title: `Core concepts of ${subject}`,
-          description: `Deep dive into the primary mechanisms and structures of ${subject}.`,
-          status: 'UNLOCKED',
-          difficulty: 'Intermediate',
-          rationale: 'Building on basics allows for understanding complex systems.'
-        },
-        {
-          id: '3',
-          title: `Advanced ${subject} Applications`,
-          description: `Learn how to apply your knowledge to real-world complex scenarios.`,
-          status: 'UNLOCKED',
-          difficulty: 'Advanced',
-          rationale: 'True mastery comes from applying theory to practice.'
-        }
-      ];
-    }
-
-    return nodes;
+    return nodes.length > 0 ? nodes : fallbackPath;
   } catch (err) {
-    console.error("Learning Path Generation Error:", err);
-    return [];
+    console.error("Learning Path API Critical Failure:", err);
+    return fallbackPath; // Ensure we ALWAYS return the fallback on total failure
   }
 }
 
