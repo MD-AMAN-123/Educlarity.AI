@@ -138,7 +138,14 @@ const AuthPage: React.FC<AuthPageProps> = ({ onLogin }) => {
                 <div className="flex justify-between items-center ml-1">
                   <label className="text-sm font-medium text-slate-400">Password</label>
                   {isLogin && (
-                    <button type="button" className="text-xs font-semibold text-indigo-400 hover:text-indigo-300 transition-colors">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsLogin(false);
+                        setFormData({ name: '', email: '', password: '' });
+                      }}
+                      className="text-xs font-semibold text-indigo-400 hover:text-indigo-300 transition-colors"
+                    >
                       Forgot Password?
                     </button>
                   )}
