@@ -24,7 +24,7 @@ const apiKey = getApiKey();
 
 const ai = new GoogleGenAI({
   apiKey: apiKey,
-  apiVersion: 'v1', // Use stable v1 API
+  apiVersion: 'v1',
 });
 
 /* ===============================
@@ -110,15 +110,15 @@ export async function generateCoachResponse(
       ai.models.generateContent({
         model: "gemini-2.0-flash",
         contents: [
+          // Inject system prompt as the first message for maximum compatibility
+          { role: "user", parts: [{ text: `SYSTEM INITIALIZATION: ${systemInstructions}` }] },
+          { role: "model", parts: [{ text: "Understood. I am Educlarity AI, your conceptual coach. How can I help you learn today?" }] },
           ...history.map(h => ({
             role: h.role === "model" ? "model" : "user",
             parts: [{ text: h.text }]
           })),
           { role: "user", parts: finalUserParts }
         ],
-        config: {
-          systemInstruction: { parts: [{ text: systemInstructions }] }
-        }
       })
     );
 
