@@ -18,9 +18,11 @@ const apiKey = import.meta.env.VITE_GEMINI_API_KEY ||
   (typeof process !== 'undefined' ? process.env.API_KEY : null) ||
   "";
 
+console.log("Educlarity AI: Gemini Key detected?", apiKey ? `Yes (${apiKey.substring(0, 6)}...)` : "NO");
+
 const ai = new GoogleGenAI({
   apiKey: apiKey,
-  apiVersion: 'v1', // Use stable v1 to avoid v1beta 404s
+  apiVersion: 'v1',
 });
 
 /* ===============================
@@ -101,29 +103,41 @@ export async function generateCoachResponse(
 
     const finalUserParts = userParts.length > 0 ? userParts : [{ text: "Hello" }];
 
-    // Stable configuration for v1
-    const res = await retry<GenerateContentResponse>(() =>
-      ai.models.generateContent({
-        model: "gemini-1.5-flash",
-        contents: [
-          // Inject instructions as history to avoid systemInstruction schema issues on v1
-          { role: "user", parts: [{ text: `INSTRUCTION: ${systemInstructions}` }] },
-          { role: "model", parts: [{ text: "Understood. I am your Educlarity AI conceptual coach. I will follow the Socratic method and help you learn. How can I assist you today?" }] },
-          ...history.map(h => ({
-            role: h.role === "model" ? "model" : "user",
-            parts: [{ text: h.text }]
-          })),
-          { role: "user", parts: finalUserParts }
-        ],
-      })
-    );
+    // We start with 2.0-flash as it was previously accepted (Status 400 instead of 404)
+    const tryModels = ["gemini-2.0-flash", "gemini-1.5-flash-latest", "gemini-1.5-flash", "gemini-1.5-pro"];
+    let lastError = null;
 
-    return { text: res.text ?? "I'm listening. Please continue." };
+    for (const modelToTry of tryModels) {
+      try {
+        const res = await retry<GenerateContentResponse>(() =>
+          ai.models.generateContent({
+            model: modelToTry,
+            contents: [
+              // Inject instructions into history for maximum compatibility on v1
+              { role: "user", parts: [{ text: `SYSTEM_INSTRUCTION: ${systemInstructions}` }] },
+              { role: "model", parts: [{ text: "Understood. I am your Educlarity AI conceptual coach." }] },
+              ...history.map(h => ({
+                role: h.role === "model" ? "model" : "user",
+                parts: [{ text: h.text }]
+              })),
+              { role: "user", parts: finalUserParts }
+            ],
+          })
+        );
+        return { text: res.text ?? "I'm processing your request." };
+      } catch (err: any) {
+        lastError = err;
+        console.warn(`Model ${modelToTry} failed:`, err.status || err.code);
+        // If it's not a 404, we found the model but the request was bad - keep it as the primary error
+        if (err.status !== 404 && err.code !== 404) break;
+      }
+    }
+
+    throw lastError;
   } catch (err: any) {
     console.error("COACH CRITICAL FAIL:", err);
-    // Return a readable error message
-    const errorBody = err?.sdkHttpResponse?.body || JSON.stringify(err);
-    return { text: `Final Error: ${errorBody}. We recommend checking your API key and region.` };
+    const errorBody = err?.sdkHttpResponse?.body || err?.message || JSON.stringify(err);
+    return { text: `Service Error: ${errorBody}. Please check your API key permissions and regional availability.` };
   }
 }
 
