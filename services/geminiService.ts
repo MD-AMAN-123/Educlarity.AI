@@ -24,7 +24,7 @@ const apiKey = getApiKey();
 
 const ai = new GoogleGenAI({
   apiKey: apiKey,
-  apiVersion: 'v1',
+  apiVersion: 'v1beta', // Use v1beta for better model alias support
 });
 
 /* ===============================
@@ -108,11 +108,11 @@ export async function generateCoachResponse(
 
     const res = await retry<GenerateContentResponse>(() =>
       ai.models.generateContent({
-        model: "gemini-2.0-flash",
+        model: "gemini-1.5-flash", // Most universally available name
         contents: [
-          // Inject system prompt as the first message for maximum compatibility
-          { role: "user", parts: [{ text: `SYSTEM INITIALIZATION: ${systemInstructions}` }] },
-          { role: "model", parts: [{ text: "Understood. I am Educlarity AI, your conceptual coach. How can I help you learn today?" }] },
+          // Inject system instructions as history to bypass schema issues
+          { role: "user", parts: [{ text: `INSTRUCTION: ${systemInstructions}` }] },
+          { role: "model", parts: [{ text: "I am ready. I will act as Educlarity AI, your conceptual coach." }] },
           ...history.map(h => ({
             role: h.role === "model" ? "model" : "user",
             parts: [{ text: h.text }]
@@ -124,9 +124,10 @@ export async function generateCoachResponse(
 
     return { text: res.text ?? "I understood your input, but I don't have a specific response yet." };
   } catch (err: any) {
-    console.error("CRITICAL COACH ERROR:", err);
-    const msg = err?.message || "Unknown error";
-    return { text: `Service Error: ${msg}. If this persists, please try a hard refresh (Ctrl+F5).` };
+    console.error("COACH ERROR:", err);
+    // Return detailed error for diagnostics
+    const detail = err && typeof err === 'object' ? JSON.stringify(err) : String(err);
+    return { text: `Final Attempt Error: ${detail}. Please ensure your network/API key are correct.` };
   }
 }
 
