@@ -47,36 +47,21 @@ const AuthPage: React.FC<AuthPageProps> = ({ onLogin }) => {
 
       <div className="max-w-6xl w-full grid md:grid-cols-2 bg-slate-900/40 backdrop-blur-2xl rounded-[2.5rem] border border-white/10 shadow-[0_0_50px_rgba(0,0,0,0.3)] overflow-hidden relative z-10 transition-all duration-500">
 
-        {/* Left Side: Brand & Features */}
-        <div className="hidden md:flex flex-col justify-between p-12 bg-gradient-to-br from-indigo-600/20 to-transparent border-r border-white/5">
-          <div>
-            <div className="flex items-center gap-3 mb-10">
-              <div className="p-3 bg-indigo-600 rounded-2xl shadow-[0_0_20px_rgba(79,70,229,0.4)]">
-                <BrainCircuit className="text-white w-8 h-8" />
-              </div>
-              <span className="text-2xl font-bold text-white tracking-tight">Educlarity.AI</span>
-            </div>
+        {/* Left Side: Brand Visual */}
+        <div className="hidden md:flex flex-col items-center justify-center p-12 bg-gradient-to-br from-indigo-600/30 to-purple-900/10 border-r border-white/5 relative overflow-hidden">
+          {/* Subtle background decoration */}
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-indigo-500/10 rounded-full blur-[100px]"></div>
 
-            <div className="space-y-8 mt-20">
-              <h1 className="text-5xl font-extrabold text-white leading-tight">
-                Unlock Your <br />
-                <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-purple-400">Potential</span> with AI
-              </h1>
-              <p className="text-slate-400 text-lg max-w-sm">
-                Experience the next generation of personalized learning powered by advanced artificial intelligence.
-              </p>
+          <div className="relative z-10 flex flex-col items-center text-center animate-in fade-in zoom-in duration-1000">
+            <div className="p-8 bg-gradient-to-br from-indigo-600 to-purple-600 rounded-[2.5rem] shadow-[0_20px_50px_rgba(79,70,229,0.4)] mb-8 transform hover:scale-105 transition-transform duration-500">
+              <BrainCircuit className="text-white w-24 h-24" />
             </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-6">
-            <div className="flex items-center gap-3 p-4 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-sm">
-              <Sparkles className="text-indigo-400 w-5 h-5" />
-              <span className="text-sm font-medium text-slate-300">AI Driven</span>
-            </div>
-            <div className="flex items-center gap-3 p-4 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-sm">
-              <ShieldCheck className="text-emerald-400 w-5 h-5" />
-              <span className="text-sm font-medium text-slate-300">Secure</span>
-            </div>
+            <h1 className="text-6xl font-black text-white tracking-tighter mb-4">
+              Educlarity<span className="text-indigo-400">.AI</span>
+            </h1>
+            <p className="text-indigo-200/60 text-xl font-medium tracking-[0.3em] uppercase">
+              Future of Learning
+            </p>
           </div>
         </div>
 
