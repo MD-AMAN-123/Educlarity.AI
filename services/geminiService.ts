@@ -24,7 +24,7 @@ const apiKey = getApiKey();
 
 const ai = new GoogleGenAI({
   apiKey: apiKey,
-  apiVersion: 'v1beta', // Use v1beta for better model alias support
+  // Let the SDK choose the default stable version
 });
 
 /* ===============================
@@ -103,31 +103,49 @@ export async function generateCoachResponse(
       });
     }
 
-    // Must have at least one part for the current turn
-    const finalUserParts = userParts.length > 0 ? userParts : [{ text: "Hello, I am ready to learn." }];
+    const finalUserParts = userParts.length > 0 ? userParts : [{ text: "Hello" }];
 
-    const res = await retry<GenerateContentResponse>(() =>
-      ai.models.generateContent({
-        model: "gemini-1.5-flash", // Most universally available name
-        contents: [
-          // Inject system instructions as history to bypass schema issues
-          { role: "user", parts: [{ text: `INSTRUCTION: ${systemInstructions}` }] },
-          { role: "model", parts: [{ text: "I am ready. I will act as Educlarity AI, your conceptual coach." }] },
-          ...history.map(h => ({
-            role: h.role === "model" ? "model" : "user",
-            parts: [{ text: h.text }]
-          })),
-          { role: "user", parts: finalUserParts }
-        ],
-      })
-    );
+    // Fallback mechanism to find a working model version
+    const tryModels = ["gemini-1.5-flash", "gemini-1.5-flash-latest", "gemini-pro"];
+    let lastError = null;
 
-    return { text: res.text ?? "I understood your input, but I don't have a specific response yet." };
+    for (const modelName of tryModels) {
+      try {
+        // If falling back to gemini-pro (text only), remove audio parts
+        const filteredParts = modelName === "gemini-pro"
+          ? finalUserParts.filter(p => p.text)
+          : finalUserParts;
+
+        if (modelName === "gemini-pro" && filteredParts.length === 0) continue;
+
+        const res = await retry<GenerateContentResponse>(() =>
+          ai.models.generateContent({
+            model: modelName,
+            contents: [
+              { role: "user", parts: [{ text: `INSTRUCTION: ${systemInstructions}` }] },
+              { role: "model", parts: [{ text: "Understood. I am your coach." }] },
+              ...history.map(h => ({
+                role: h.role === "model" ? "model" : "user",
+                parts: [{ text: h.text }]
+              })),
+              { role: "user", parts: filteredParts }
+            ],
+          })
+        );
+
+        return { text: res.text ?? "I'm listening. Please continue." };
+      } catch (err: any) {
+        lastError = err;
+        // If it's not a 404, or we're on the last model, stop and report
+        if (err.status !== 404 && err.code !== 404) break;
+      }
+    }
+
+    throw lastError;
   } catch (err: any) {
-    console.error("COACH ERROR:", err);
-    // Return detailed error for diagnostics
-    const detail = err && typeof err === 'object' ? JSON.stringify(err) : String(err);
-    return { text: `Final Attempt Error: ${detail}. Please ensure your network/API key are correct.` };
+    console.error("COACH CRITICAL FAIL:", err);
+    const errorMsg = err?.message || JSON.stringify(err);
+    return { text: `Final Error: ${errorMsg}. Please check if your API key has "Generative Language API" enabled in Google AI Studio.` };
   }
 }
 
