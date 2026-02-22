@@ -6,8 +6,10 @@ import {
   QuizQuestion,
   LearningNode,
   TeacherInsight,
-  Student
+  Student,
+  StudyBot
 } from "../types";
+
 
 /* ===============================
    SAFE ENV
@@ -78,42 +80,64 @@ export async function generateCoachResponse(
   currentMessage: string,
   mode: CoachMode,
   language: Language,
-  audioBase64?: string
+  audioBase64?: string,
+  bot?: StudyBot
 ): Promise<{ text: string }> {
+
   if (!apiKey || apiKey.length < 10) {
     return { text: "Educlarity Error: API Key missing. Please check .env.local." };
   }
 
-  const contents = [
-    { role: "user", parts: [{ text: `You are "Educlarity AI", a conceptual coach. Mode: ${mode}. Language: ${language}. Use the Socratic method.` }] },
-    { role: "model", parts: [{ text: "Understood. I am ready to coach." }] },
-    ...history.map(h => ({
-      role: h.role === "model" ? "model" : "user",
-      parts: [{ text: h.text }]
-    })),
-    {
+  // Ensure alternating user/model sequence for Gemini API
+  const contents: any[] = [];
+
+  // 1. Initial System/Bot Persona Message
+  const systemPrompt = bot
+    ? `You are "${bot.name}", an AI assistant specializing in ${bot.subject}. Your personality is: ${bot.personality}. Respond in ${language}.`
+    : `You are "Educlarity AI", a conceptual coach. Mode: ${mode}. Language: ${language}. Use the Socratic method.`;
+
+  contents.push({ role: "user", parts: [{ text: systemPrompt }] });
+  contents.push({ role: "model", parts: [{ text: bot ? `Hello! I am ${bot.name}. I am ready to assist you.` : "Understood. I am ready to coach." }] });
+
+  // 2. Add history, ensuring we don't duplicate roles
+  history.forEach(h => {
+    const role = h.role === "model" ? "model" : "user";
+    const lastRole = contents.length > 0 ? contents[contents.length - 1].role : null;
+
+    if (role === lastRole) {
+      // Append to last message if consecutive role
+      contents[contents.length - 1].parts[0].text += `\n\n${h.text}`;
+    } else {
+      contents.push({ role, parts: [{ text: h.text }] });
+    }
+  });
+
+  // 3. Add current message
+  const lastRole = contents.length > 0 ? contents[contents.length - 1].role : null;
+  if (lastRole === "user") {
+    contents[contents.length - 1].parts[0].text += `\n\n${currentMessage}`;
+    if (audioBase64) {
+      contents[contents.length - 1].parts.push({ inlineData: { mimeType: "audio/webm", data: audioBase64 } });
+    }
+  } else {
+    contents.push({
       role: "user",
       parts: [
-        ...(currentMessage ? [{ text: currentMessage }] : []),
+        { text: currentMessage || "Proceed" },
         ...(audioBase64 ? [{ inlineData: { mimeType: "audio/webm", data: audioBase64 } }] : [])
       ]
-    }
-  ];
-
-  if (contents[contents.length - 1].parts.length === 0) {
-    contents[contents.length - 1].parts.push({ text: "Hello" });
+    });
   }
 
   // Define fallback chain based exactly on the user's authorized models
   const endpoints = [
-    { ver: "v1beta", model: "gemini-1.5-flash" },
-    { ver: "v1", model: "gemini-1.5-flash" },
+    { ver: "v1beta", model: "gemini-2.5-flash" },
+    { ver: "v1beta", model: "gemini-2.5-flash-lite" },
     { ver: "v1beta", model: "gemini-2.0-flash" },
-    { ver: "v1", model: "gemini-2.0-flash" },
-    { ver: "v1beta", model: "gemini-1.5-pro" },
-    { ver: "v1beta", model: "gemini-2.0-flash-lite" }
+    { ver: "v1beta", model: "gemini-2.0-flash-001" },
+    { ver: "v1beta", model: "gemini-2.5-pro" },
+    { ver: "v1", model: "gemini-1.5-flash" }
   ];
-
 
   let lastError = "";
 
@@ -140,6 +164,7 @@ export async function generateCoachResponse(
       lastError = err.message;
     }
   }
+
 
   // If we reach here, everything failed. Let's try to list authorized models for the user
   try {
@@ -180,16 +205,33 @@ If the user asks to add a student, you MUST return a plain text response startin
 If the user asks to remove a student, you MUST return a plain text response starting with "ACTION_REMOVE:" followed by the student name.
 Otherwise, answer normally.`;
 
+    const contents: any[] = [{ role: "user", parts: [{ text: systemPrompt }] }];
+    contents.push({ role: "model", parts: [{ text: "Understood. I have access to the student database." }] });
+
+    history.forEach(h => {
+      const role = h.role === "model" ? "model" : "user";
+      const lastRole = contents.length > 0 ? contents[contents.length - 1].role : null;
+      if (role === lastRole) {
+        contents[contents.length - 1].parts[0].text += `\n\n${h.text}`;
+      } else {
+        contents.push({ role, parts: [{ text: h.text }] });
+      }
+    });
+
+    const finalRole = contents.length > 0 ? contents[contents.length - 1].role : null;
+    if (finalRole === "user") {
+      contents[contents.length - 1].parts[0].text += `\n\n${message}`;
+    } else {
+      contents.push({ role: "user", parts: [{ text: message }] });
+    }
+
     const res = await retry<GenerateContentResponse>(() =>
       ai.models.generateContent({
-        model: "gemini-flash-latest",
-        contents: [
-          { role: "user", parts: [{ text: systemPrompt }] },
-          ...history.map(h => ({ role: h.role === "model" ? "model" : "user", parts: [{ text: h.text }] })),
-          { role: "user", parts: [{ text: message }] }
-        ],
+        model: "gemini-2.5-flash",
+        contents
       })
     );
+
 
     let text = res.text ?? "No response.";
 
@@ -226,9 +268,10 @@ export async function generateVisualAid(
   try {
     const res = await retry<GenerateContentResponse>(() =>
       ai.models.generateContent({
-        model: "gemini-1.5-flash",
+        model: "gemini-2.5-flash",
         contents: `Explain ${topic} clearly`,
       })
+
 
     );
 
@@ -296,9 +339,10 @@ export async function generateLearningPath(
   try {
     const res = await retry<GenerateContentResponse>(() =>
       ai.models.generateContent({
-        model: "gemini-1.5-flash",
+        model: "gemini-2.5-flash",
         contents: [{ role: "user", parts: [{ text: prompt }] }],
       })
+
 
     );
 
@@ -333,7 +377,7 @@ export async function generateTeacherInsights(
   try {
     const res = await retry<GenerateContentResponse>(() =>
       ai.models.generateContent({
-        model: "gemini-flash-latest",
+        model: "gemini-2.5-flash",
         contents: [{ role: "user", parts: [{ text: prompt }] }],
       })
     );
@@ -370,15 +414,17 @@ export async function generateQuiz(
     return [];
   }
 
-  // Consistent with working endpoints and common reliable models
+  // Prioritize working models for this key
   const endpoints = [
-    { ver: "v1beta", model: "gemini-1.5-flash" },
-    { ver: "v1", model: "gemini-1.5-flash" },
+    { ver: "v1beta", model: "gemini-2.5-flash" },
+    { ver: "v1beta", model: "gemini-2.5-flash-lite" },
     { ver: "v1beta", model: "gemini-2.0-flash" },
-    { ver: "v1", model: "gemini-2.0-flash" },
-    { ver: "v1beta", model: "gemini-1.5-flash-latest" },
-    { ver: "v1beta", model: "gemini-2.5-flash" }
+    { ver: "v1beta", model: "gemini-2.0-flash-001" },
+    { ver: "v1", model: "gemini-1.5-flash" }
   ];
+
+
+
 
   for (const endpoint of endpoints) {
     try {
@@ -437,9 +483,10 @@ export async function checkOriginality(
   try {
     const res = await retry<GenerateContentResponse>(() =>
       ai.models.generateContent({
-        model: "gemini-1.5-flash",
+        model: "gemini-2.5-flash",
         contents: `Check originality: ${text.substring(0, 500)}`,
       })
+
 
     );
 
