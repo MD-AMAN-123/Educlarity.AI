@@ -360,22 +360,46 @@ export async function generateQuiz(
       "explanation": string; // brief explanation of why the answer is correct
     }
     
-    Provide 5 varied and challenging questions. RETURN ONLY THE JSON ARRAY.`;
+    Provide 5 varied and challenging questions. RETURN ONLY THE JSON ARRAY. NO MARKDOWN. NO PREAMBLE.`;
 
-  try {
-    const res = await retry<GenerateContentResponse>(() =>
-      ai.models.generateContent({
-        model: "gemini-flash-latest",
-        contents: [{ role: "user", parts: [{ text: prompt }] }],
-      })
-    );
-
-    return safeParse<QuizQuestion[]>(res.text, []);
-  } catch (err) {
-    console.error("Quiz Generation Error:", err);
+  if (!apiKey || apiKey.length < 10) {
+    console.warn("Gemini API Key missing for Quiz Generation.");
     return [];
   }
+
+  const endpoints = [
+    { ver: "v1beta", model: "gemini-2.0-flash" },
+    { ver: "v1", model: "gemini-2.0-flash" },
+    { ver: "v1beta", model: "gemini-1.5-flash-latest" },
+    { ver: "v1", model: "gemini-1.5-flash-latest" }
+  ];
+
+  for (const endpoint of endpoints) {
+    try {
+      const url = `https://generativelanguage.googleapis.com/${endpoint.ver}/models/${endpoint.model}:generateContent?key=${apiKey}`;
+
+      const response = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [{ role: "user", parts: [{ text: prompt }] }]
+        })
+      });
+
+      const data = await response.json();
+      if (response.ok) {
+        const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+        const quiz = safeParse<QuizQuestion[]>(text, []);
+        if (quiz.length > 0) return quiz;
+      }
+    } catch (err) {
+      console.warn(`Quiz generation failed for ${endpoint.model}:`, err);
+    }
+  }
+
+  return [];
 }
+
 /* ===============================
    BLOB TO BASE64
 ================================ */
