@@ -71,19 +71,49 @@ export async function generateCoachResponse(
   history: { role: string; text: string }[],
   currentMessage: string,
   mode: CoachMode,
-  language: Language
+  language: Language,
+  audioBase64?: string
 ): Promise<{ text: string }> {
+  const systemPrompt = `You are "Educlarity AI", a brilliant and empathetic conceptual coach. 
+    Your goal is to help students master complex topics through the ${mode} method.
+    Current Language: ${language}.
+    If mode is LEARNING: Explain concepts simply using analogies, then ask ONE challenging conceptual question.
+    If mode is ANSWER: Evaluate the student's explanation, provide feedback, and correct any misconceptions gently.
+    Keep your responses concise, encouraging, and professional.
+    Since this is a voice-enabled assistant, keep responses structured and easy to listen to.`;
+
   try {
+    const contents: any[] = [
+      { role: "user", parts: [{ text: systemPrompt }] },
+      ...history.map(h => ({
+        role: h.role === "model" ? "model" : "user",
+        parts: [{ text: h.text }]
+      }))
+    ];
+
+    const currentParts: any[] = [{ text: currentMessage }];
+    if (audioBase64) {
+      currentParts.push({
+        inlineData: {
+          mimeType: "audio/wav",
+          data: audioBase64
+        }
+      });
+    }
+
+    contents.push({ role: "user", parts: currentParts });
+
     const res = await retry<GenerateContentResponse>(() =>
       ai.models.generateContent({
-        model: "gemini-flash-latest",
-        contents: currentMessage,
+        model: "gemini-1.5-flash",
+        contents: contents,
       })
     );
 
-    return { text: res.text ?? "No response." };
-  } catch {
-    return { text: "AI temporarily unavailable." };
+    return { text: res.text ?? "I'm sorry, I couldn't process that." };
+  } catch (err) {
+    console.error("Coach API Error:", err);
+    return { text: "Voice assistant is currently offline. Please try typing your question." };
   }
 }
 

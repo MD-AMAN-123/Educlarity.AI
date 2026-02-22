@@ -23,7 +23,7 @@ const ConceptCoach: React.FC<ConceptCoachProps> = ({ initialTopic, onClearTopic 
   const [isGeneratingImage, setIsGeneratingImage] = useState(false);
   const [mode, setMode] = useState<CoachMode>(CoachMode.LEARNING);
   const [language, setLanguage] = useState<Language>(Language.ENGLISH);
-  
+
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -52,7 +52,7 @@ const ConceptCoach: React.FC<ConceptCoachProps> = ({ initialTopic, onClearTopic 
       text: text || (audioBase64 ? '(Voice Input)' : ''),
       timestamp: Date.now()
     };
-    
+
     setMessages(prev => [...prev, userMsg]);
     setIsProcessing(true);
     setInputText('');
@@ -71,17 +71,14 @@ const ConceptCoach: React.FC<ConceptCoachProps> = ({ initialTopic, onClearTopic 
         id: (Date.now() + 1).toString(),
         role: 'model',
         text: response.text,
-        audioData: response.audioBase64,
-        isAudio: !!response.audioBase64,
+        isAudio: true, // Mark as audio to show voice controls
         timestamp: Date.now()
       };
-      
+
       setMessages(prev => [...prev, aiMsg]);
 
-      // Auto-play audio if present
-      if (response.audioBase64) {
-        playAudio(response.audioBase64);
-      }
+      // Speak the response for voice assistant feel
+      speakText(response.text);
 
     } catch (error) {
       console.error(error);
@@ -97,7 +94,7 @@ const ConceptCoach: React.FC<ConceptCoachProps> = ({ initialTopic, onClearTopic 
     setIsGeneratingImage(true);
     // Add a placeholder message
     const placeholderId = 'generating-image';
-    
+
     try {
       const imageData = await generateVisualAid(lastContext.substring(0, 100)); // pass simplified topic
       if (imageData) {
@@ -153,8 +150,30 @@ const ConceptCoach: React.FC<ConceptCoachProps> = ({ initialTopic, onClearTopic 
     }
   };
 
+  const speakText = (text: string) => {
+    // Cancel any ongoing speech
+    window.speechSynthesis.cancel();
+
+    // Remove markdown symbols for cleaner speech
+    const cleanText = text.replace(/[*#_`]/g, '');
+
+    const utterance = new SpeechSynthesisUtterance(cleanText);
+
+    // Try to find a good sounding voice
+    const voices = window.speechSynthesis.getVoices();
+    const preferredVoice = voices.find(v => v.name.includes('Google') || v.name.includes('Female')) || voices[0];
+
+    if (preferredVoice) utterance.voice = preferredVoice;
+    utterance.rate = 1.0;
+    utterance.pitch = 1.0;
+    utterance.lang = language === 'English' ? 'en-US' : 'hi-IN'; // Basic language support
+
+    window.speechSynthesis.speak(utterance);
+  };
+
   const playAudio = (base64: string) => {
-    const audio = new Audio(`data:audio/mp3;base64,${base64}`); // Gemini TTS returns MP3 usually, or check header
+    // Fallback for direct audio data if ever provided by an API
+    const audio = new Audio(`data:audio/wav;base64,${base64}`);
     audio.play();
   };
 
@@ -163,15 +182,15 @@ const ConceptCoach: React.FC<ConceptCoachProps> = ({ initialTopic, onClearTopic 
       {/* Header */}
       <div className="bg-white dark:bg-slate-900 border-b dark:border-slate-800 p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 z-10 shadow-sm">
         <div>
-           <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
-             <Globe className="w-5 h-5 text-indigo-500" />
-             AI Concept Coach
-           </h2>
-           <p className="text-xs text-slate-500 dark:text-slate-400">Adaptive learning for {language}</p>
+          <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+            <Globe className="w-5 h-5 text-indigo-500" />
+            AI Concept Coach
+          </h2>
+          <p className="text-xs text-slate-500 dark:text-slate-400">Adaptive learning for {language}</p>
         </div>
-        
+
         <div className="flex gap-2 text-sm">
-          <select 
+          <select
             value={language}
             onChange={(e) => setLanguage(e.target.value as Language)}
             className="border dark:border-slate-700 rounded-lg px-3 py-1.5 bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-200 outline-none focus:ring-2 focus:ring-indigo-500"
@@ -202,42 +221,41 @@ const ConceptCoach: React.FC<ConceptCoachProps> = ({ initialTopic, onClearTopic 
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {messages.map((msg) => (
           <div key={msg.id} className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
-             <div className={`max-w-[85%] md:max-w-[70%] rounded-2xl p-4 shadow-sm ${
-               msg.role === 'user' 
-                ? 'bg-indigo-600 text-white rounded-br-none' 
-                : 'bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 border dark:border-slate-700 rounded-bl-none'
-             }`}>
-               {msg.text && <p className="leading-relaxed whitespace-pre-wrap" dir="auto">{msg.text}</p>}
-               
-               {msg.imageData && (
-                 <div className="mt-3">
-                   <img 
-                      src={`data:image/png;base64,${msg.imageData}`} 
-                      alt="Visual Aid" 
-                      className="rounded-lg border dark:border-slate-600 shadow-sm w-full h-auto"
-                   />
-                 </div>
-               )}
+            <div className={`max-w-[85%] md:max-w-[70%] rounded-2xl p-4 shadow-sm ${msg.role === 'user'
+              ? 'bg-indigo-600 text-white rounded-br-none'
+              : 'bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 border dark:border-slate-700 rounded-bl-none'
+              }`}>
+              {msg.text && <p className="leading-relaxed whitespace-pre-wrap" dir="auto">{msg.text}</p>}
 
-               {msg.isAudio && msg.audioData && (
-                 <button 
-                  onClick={() => playAudio(msg.audioData!)}
+              {msg.imageData && (
+                <div className="mt-3">
+                  <img
+                    src={`data:image/png;base64,${msg.imageData}`}
+                    alt="Visual Aid"
+                    className="rounded-lg border dark:border-slate-600 shadow-sm w-full h-auto"
+                  />
+                </div>
+              )}
+
+              {msg.isAudio && (
+                <button
+                  onClick={() => speakText(msg.text)}
                   className="mt-2 flex items-center gap-2 text-xs bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 px-3 py-1.5 rounded-full hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors w-fit"
-                 >
-                   <Volume2 size={14} /> Play Voice Response
-                 </button>
-               )}
-             </div>
-             
-             {/* Visual Aid Trigger */}
-             {msg.role === 'model' && !msg.imageData && !msg.isAudio && (
-               <button 
+                >
+                  <Volume2 size={14} /> Replay Voice
+                </button>
+              )}
+            </div>
+
+            {/* Visual Aid Trigger */}
+            {msg.role === 'model' && !msg.imageData && !msg.isAudio && (
+              <button
                 onClick={handleGenerateVisual}
                 className="mt-1 ml-2 text-xs text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 flex items-center gap-1"
-               >
-                 <ImageIcon size={12} /> Visualize this
-               </button>
-             )}
+              >
+                <ImageIcon size={12} /> Visualize this
+              </button>
+            )}
           </div>
         ))}
         {isProcessing && (
@@ -249,7 +267,7 @@ const ConceptCoach: React.FC<ConceptCoachProps> = ({ initialTopic, onClearTopic 
           </div>
         )}
         {isGeneratingImage && (
-           <div className="flex justify-start">
+          <div className="flex justify-start">
             <div className="bg-white dark:bg-slate-800 p-4 rounded-2xl rounded-bl-none shadow-sm border dark:border-slate-700 flex items-center gap-2">
               <Loader2 className="animate-spin text-purple-500" size={18} />
               <span className="text-slate-500 dark:text-slate-400 text-sm">Generating diagram...</span>
@@ -271,13 +289,12 @@ const ConceptCoach: React.FC<ConceptCoachProps> = ({ initialTopic, onClearTopic 
             className="flex-1 border dark:border-slate-700 rounded-full px-5 py-3 pr-12 bg-slate-50 dark:bg-slate-800 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500 transition-all placeholder:text-slate-400 dark:placeholder:text-slate-500"
             disabled={isRecording || isProcessing || isGeneratingImage}
           />
-          
+
           {/* Recording Button */}
           <button
             onClick={isRecording ? stopRecording : startRecording}
-            className={`absolute right-14 p-2 rounded-full transition-colors ${
-              isRecording ? 'text-red-500 hover:bg-red-50 animate-pulse' : 'text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400'
-            }`}
+            className={`absolute right-14 p-2 rounded-full transition-colors ${isRecording ? 'text-red-500 hover:bg-red-50 animate-pulse' : 'text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400'
+              }`}
           >
             {isRecording ? <Square size={20} fill="currentColor" /> : <Mic size={20} />}
           </button>
