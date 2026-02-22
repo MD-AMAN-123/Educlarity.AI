@@ -13,18 +13,14 @@ import {
    SAFE ENV
 ================================ */
 
-const getApiKey = () => {
-  return import.meta.env.VITE_GEMINI_API_KEY ||
-    (typeof process !== 'undefined' ? process.env.GEMINI_API_KEY : null) ||
-    (typeof process !== 'undefined' ? process.env.API_KEY : null) ||
-    "";
-};
-
-const apiKey = getApiKey();
+const apiKey = import.meta.env.VITE_GEMINI_API_KEY ||
+  (typeof process !== 'undefined' ? process.env.GEMINI_API_KEY : null) ||
+  (typeof process !== 'undefined' ? process.env.API_KEY : null) ||
+  "";
 
 const ai = new GoogleGenAI({
   apiKey: apiKey,
-  // Let the SDK choose the default stable version
+  apiVersion: 'v1', // Use stable v1 to avoid v1beta 404s
 });
 
 /* ===============================
@@ -105,47 +101,29 @@ export async function generateCoachResponse(
 
     const finalUserParts = userParts.length > 0 ? userParts : [{ text: "Hello" }];
 
-    // Fallback mechanism to find a working model version
-    const tryModels = ["gemini-1.5-flash", "gemini-1.5-flash-latest", "gemini-pro"];
-    let lastError = null;
+    // Stable configuration for v1
+    const res = await retry<GenerateContentResponse>(() =>
+      ai.models.generateContent({
+        model: "gemini-1.5-flash",
+        contents: [
+          // Inject instructions as history to avoid systemInstruction schema issues on v1
+          { role: "user", parts: [{ text: `INSTRUCTION: ${systemInstructions}` }] },
+          { role: "model", parts: [{ text: "Understood. I am your Educlarity AI conceptual coach. I will follow the Socratic method and help you learn. How can I assist you today?" }] },
+          ...history.map(h => ({
+            role: h.role === "model" ? "model" : "user",
+            parts: [{ text: h.text }]
+          })),
+          { role: "user", parts: finalUserParts }
+        ],
+      })
+    );
 
-    for (const modelName of tryModels) {
-      try {
-        // If falling back to gemini-pro (text only), remove audio parts
-        const filteredParts = modelName === "gemini-pro"
-          ? finalUserParts.filter(p => p.text)
-          : finalUserParts;
-
-        if (modelName === "gemini-pro" && filteredParts.length === 0) continue;
-
-        const res = await retry<GenerateContentResponse>(() =>
-          ai.models.generateContent({
-            model: modelName,
-            contents: [
-              { role: "user", parts: [{ text: `INSTRUCTION: ${systemInstructions}` }] },
-              { role: "model", parts: [{ text: "Understood. I am your coach." }] },
-              ...history.map(h => ({
-                role: h.role === "model" ? "model" : "user",
-                parts: [{ text: h.text }]
-              })),
-              { role: "user", parts: filteredParts }
-            ],
-          })
-        );
-
-        return { text: res.text ?? "I'm listening. Please continue." };
-      } catch (err: any) {
-        lastError = err;
-        // If it's not a 404, or we're on the last model, stop and report
-        if (err.status !== 404 && err.code !== 404) break;
-      }
-    }
-
-    throw lastError;
+    return { text: res.text ?? "I'm listening. Please continue." };
   } catch (err: any) {
     console.error("COACH CRITICAL FAIL:", err);
-    const errorMsg = err?.message || JSON.stringify(err);
-    return { text: `Final Error: ${errorMsg}. Please check if your API key has "Generative Language API" enabled in Google AI Studio.` };
+    // Return a readable error message
+    const errorBody = err?.sdkHttpResponse?.body || JSON.stringify(err);
+    return { text: `Final Error: ${errorBody}. We recommend checking your API key and region.` };
   }
 }
 
