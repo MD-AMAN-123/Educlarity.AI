@@ -43,8 +43,12 @@ async function retry<T>(
 function safeParse<T>(text: string | undefined, fallback: T): T {
   if (!text) return fallback;
   try {
-    return JSON.parse(text) as T;
+    // Extract JSON from markdown or preamble/postamble
+    const jsonMatch = text.match(/\[[\s\S]*\]|\{[\s\S]*\}/);
+    const cleanText = jsonMatch ? jsonMatch[0] : text;
+    return JSON.parse(cleanText) as T;
   } catch {
+    console.error("Failed to parse AI response as JSON:", text);
     return fallback;
   }
 }
@@ -163,16 +167,65 @@ export async function generateVisualAid(
 export async function generateLearningPath(
   subject: string
 ): Promise<LearningNode[]> {
+  const prompt = `Create a professional and comprehensive learning path for "${subject}" as a JSON array of 5-7 milestones.
+    Each milestone must strictly follow this TypeScript interface:
+    {
+      "id": string; // unique short ID like "basics", "advanced"
+      "title": string; // engaging title
+      "description": string; // 1-2 sentences on what will be covered
+      "status": "UNLOCKED" | "IN_PROGRESS" | "LOCKED";
+      "difficulty": "Beginner" | "Intermediate" | "Advanced";
+      "rationale": string; // why this specific step is crucial for mastering ${subject}
+    }
+    
+    Guidelines:
+    1. Provide a logical sequence from fundamentals to mastery.
+    2. The first 3 milestones should be "UNLOCKED" to make the path feel immediately accessible.
+    3. Ensure the JSON is perfectly formatted and contains NO other text.`;
+
   try {
     const res = await retry<GenerateContentResponse>(() =>
       ai.models.generateContent({
         model: "gemini-flash-latest",
-        contents: `Create JSON learning path for ${subject}`,
+        contents: [{ role: "user", parts: [{ text: prompt }] }],
       })
     );
 
-    return safeParse<LearningNode[]>(res.text, []);
-  } catch {
+    const nodes = safeParse<LearningNode[]>(res.text, []);
+
+    // Add fallback if AI fails to give us nodes
+    if (nodes.length === 0) {
+      return [
+        {
+          id: '1',
+          title: `Introduction to ${subject}`,
+          description: `Master the essential fundamentals and core principles of ${subject}.`,
+          status: 'IN_PROGRESS',
+          difficulty: 'Beginner',
+          rationale: 'Every expert starts with a strong grasp of the basics.'
+        },
+        {
+          id: '2',
+          title: `Core concepts of ${subject}`,
+          description: `Deep dive into the primary mechanisms and structures of ${subject}.`,
+          status: 'UNLOCKED',
+          difficulty: 'Intermediate',
+          rationale: 'Building on basics allows for understanding complex systems.'
+        },
+        {
+          id: '3',
+          title: `Advanced ${subject} Applications`,
+          description: `Learn how to apply your knowledge to real-world complex scenarios.`,
+          status: 'UNLOCKED',
+          difficulty: 'Advanced',
+          rationale: 'True mastery comes from applying theory to practice.'
+        }
+      ];
+    }
+
+    return nodes;
+  } catch (err) {
+    console.error("Learning Path Generation Error:", err);
     return [];
   }
 }
@@ -184,16 +237,30 @@ export async function generateLearningPath(
 export async function generateTeacherInsights(
   data: string
 ): Promise<TeacherInsight[]> {
+  const prompt = `Analyze the following student performance data and provide 3-4 professional educational insights as a JSON array.
+    Each insight must follow this interface:
+    {
+      "topic": string;
+      "avgScore": number;
+      "difficultyLevel": "Low" | "Medium" | "High";
+      "recommendation": string; // clinical/educational advice
+    }
+    
+    Data: ${data}
+    
+    RETURN ONLY THE JSON ARRAY.`;
+
   try {
     const res = await retry<GenerateContentResponse>(() =>
       ai.models.generateContent({
         model: "gemini-flash-latest",
-        contents: `Analyze data and return JSON insights: ${data}`,
+        contents: [{ role: "user", parts: [{ text: prompt }] }],
       })
     );
 
     return safeParse<TeacherInsight[]>(res.text, []);
-  } catch {
+  } catch (err) {
+    console.error("Teacher Insights Error:", err);
     return [];
   }
 }
@@ -206,16 +273,29 @@ export async function generateQuiz(
   topic: string,
   difficulty: string
 ): Promise<QuizQuestion[]> {
+  const prompt = `Generate a high-quality educational quiz about "${topic}" with difficulty level "${difficulty}".
+    Return the response ONLY as a JSON array of objects following this interface:
+    {
+      "id": number;
+      "question": string;
+      "options": string[]; // 4 options
+      "correctAnswerIndex": number; // 0-3
+      "explanation": string; // brief explanation of why the answer is correct
+    }
+    
+    Provide 5 varied and challenging questions. RETURN ONLY THE JSON ARRAY.`;
+
   try {
     const res = await retry<GenerateContentResponse>(() =>
       ai.models.generateContent({
         model: "gemini-flash-latest",
-        contents: `Generate JSON quiz about ${topic} difficulty ${difficulty}`,
+        contents: [{ role: "user", parts: [{ text: prompt }] }],
       })
     );
 
     return safeParse<QuizQuestion[]>(res.text, []);
-  } catch {
+  } catch (err) {
+    console.error("Quiz Generation Error:", err);
     return [];
   }
 }
