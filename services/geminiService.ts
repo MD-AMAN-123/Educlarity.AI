@@ -13,10 +13,10 @@ import {
    SAFE ENV
 ================================ */
 
-const apiKey = import.meta.env.VITE_GEMINI_API_KEY ||
+const apiKey = (import.meta.env.VITE_GEMINI_API_KEY ||
   (typeof process !== 'undefined' ? process.env.GEMINI_API_KEY : null) ||
   (typeof process !== 'undefined' ? process.env.API_KEY : null) ||
-  "";
+  "").trim();
 
 console.log("Educlarity AI: Gemini Key detected?", apiKey ? `Yes (${apiKey.substring(0, 6)}...)` : "NO");
 
@@ -81,63 +81,52 @@ export async function generateCoachResponse(
   audioBase64?: string
 ): Promise<{ text: string }> {
   if (!apiKey || apiKey.length < 10) {
-    return { text: "Educlarity Error: Gemini API Key is missing or invalid. Please check your .env.local file and restart the dev server." };
+    return { text: "Educlarity Error: API Key missing. Please check .env.local." };
   }
 
-  const systemInstructions = `You are "Educlarity AI", a professional conceptual coach.
-    Mode: ${mode}. Language: ${language}.
-    Follow the Socratic method: explain with analogies, then ask a conceptual question.
-    Be concise and encouraging.`;
+  const systemInstructions = `You are "Educlarity AI", a conceptual coach. Mode: ${mode}. Language: ${language}. Use the Socratic method.`;
 
   try {
-    const userParts: any[] = [];
-    if (currentMessage) userParts.push({ text: currentMessage });
-    if (audioBase64) {
-      userParts.push({
-        inlineData: {
-          mimeType: "audio/webm",
-          data: audioBase64
-        }
-      });
-    }
-
-    const finalUserParts = userParts.length > 0 ? userParts : [{ text: "Hello" }];
-
-    // We start with 2.0-flash as it was previously accepted (Status 400 instead of 404)
-    const tryModels = ["gemini-2.0-flash", "gemini-1.5-flash-latest", "gemini-1.5-flash", "gemini-1.5-pro"];
-    let lastError = null;
-
-    for (const modelToTry of tryModels) {
-      try {
-        const res = await retry<GenerateContentResponse>(() =>
-          ai.models.generateContent({
-            model: modelToTry,
-            contents: [
-              // Inject instructions into history for maximum compatibility on v1
-              { role: "user", parts: [{ text: `SYSTEM_INSTRUCTION: ${systemInstructions}` }] },
-              { role: "model", parts: [{ text: "Understood. I am your Educlarity AI conceptual coach." }] },
-              ...history.map(h => ({
-                role: h.role === "model" ? "model" : "user",
-                parts: [{ text: h.text }]
-              })),
-              { role: "user", parts: finalUserParts }
-            ],
-          })
-        );
-        return { text: res.text ?? "I'm processing your request." };
-      } catch (err: any) {
-        lastError = err;
-        console.warn(`Model ${modelToTry} failed:`, err.status || err.code);
-        // If it's not a 404, we found the model but the request was bad - keep it as the primary error
-        if (err.status !== 404 && err.code !== 404) break;
+    const contents = [
+      { role: "user", parts: [{ text: `INSTRUCTION: ${systemInstructions}` }] },
+      { role: "model", parts: [{ text: "Understood." }] },
+      ...history.map(h => ({
+        role: h.role === "model" ? "model" : "user",
+        parts: [{ text: h.text }]
+      })),
+      {
+        role: "user",
+        parts: [
+          ...(currentMessage ? [{ text: currentMessage }] : []),
+          ...(audioBase64 ? [{ inlineData: { mimeType: "audio/webm", data: audioBase64 } }] : [])
+        ]
       }
+    ];
+
+    if (contents[contents.length - 1].parts.length === 0) {
+      contents[contents.length - 1].parts.push({ text: "Hello" });
     }
 
-    throw lastError;
+    const url = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+
+    const response = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ contents })
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      console.error("API Error Body:", data);
+      return { text: `Final Error: Status ${response.status} - ${data.error?.message || "Unknown Error"}.` };
+    }
+
+    return { text: data.candidates?.[0]?.content?.parts?.[0]?.text || "No response received." };
+
   } catch (err: any) {
-    console.error("COACH CRITICAL FAIL:", err);
-    const errorBody = err?.sdkHttpResponse?.body || err?.message || JSON.stringify(err);
-    return { text: `Service Error: ${errorBody}. Please check your API key permissions and regional availability.` };
+    console.error("Fetch Failure:", err);
+    return { text: `System Error: ${err.message}. Please check your connection.` };
   }
 }
 
