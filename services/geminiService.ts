@@ -84,49 +84,70 @@ export async function generateCoachResponse(
     return { text: "Educlarity Error: API Key missing. Please check .env.local." };
   }
 
-  const systemInstructions = `You are "Educlarity AI", a conceptual coach. Mode: ${mode}. Language: ${language}. Use the Socratic method.`;
+  const contents = [
+    { role: "user", parts: [{ text: `You are "Educlarity AI", a conceptual coach. Mode: ${mode}. Language: ${language}. Use the Socratic method.` }] },
+    { role: "model", parts: [{ text: "Understood. I am ready to coach." }] },
+    ...history.map(h => ({
+      role: h.role === "model" ? "model" : "user",
+      parts: [{ text: h.text }]
+    })),
+    {
+      role: "user",
+      parts: [
+        ...(currentMessage ? [{ text: currentMessage }] : []),
+        ...(audioBase64 ? [{ inlineData: { mimeType: "audio/webm", data: audioBase64 } }] : [])
+      ]
+    }
+  ];
 
-  try {
-    const contents = [
-      { role: "user", parts: [{ text: `INSTRUCTION: ${systemInstructions}` }] },
-      { role: "model", parts: [{ text: "Understood." }] },
-      ...history.map(h => ({
-        role: h.role === "model" ? "model" : "user",
-        parts: [{ text: h.text }]
-      })),
-      {
-        role: "user",
-        parts: [
-          ...(currentMessage ? [{ text: currentMessage }] : []),
-          ...(audioBase64 ? [{ inlineData: { mimeType: "audio/webm", data: audioBase64 } }] : [])
-        ]
+  if (contents[contents.length - 1].parts.length === 0) {
+    contents[contents.length - 1].parts.push({ text: "Hello" });
+  }
+
+  // Define fallback chain
+  const endpoints = [
+    { ver: "v1beta", model: "gemini-1.5-flash" },
+    { ver: "v1beta", model: "gemini-2.0-flash" },
+    { ver: "v1", model: "gemini-pro" },
+    { ver: "v1beta", model: "gemini-1.5-flash-latest" }
+  ];
+
+  let lastError = "";
+
+  for (const endpoint of endpoints) {
+    try {
+      const url = `https://generativelanguage.googleapis.com/${endpoint.ver}/models/${endpoint.model}:generateContent?key=${apiKey}`;
+
+      const response = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ contents })
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        return { text: data.candidates?.[0]?.content?.parts?.[0]?.text || "No response received." };
       }
-    ];
 
-    if (contents[contents.length - 1].parts.length === 0) {
-      contents[contents.length - 1].parts.push({ text: "Hello" });
+      lastError = `[${endpoint.ver}/${endpoint.model}] ${data.error?.message || "Unknown error"}`;
+      console.warn("Attempt failed:", lastError);
+
+    } catch (err: any) {
+      lastError = err.message;
     }
+  }
 
-    const url = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+  // If we reach here, everything failed. Let's try to list authorized models for the user
+  try {
+    const listUrl = `https://generativelanguage.googleapis.com/v1/models?key=${apiKey}`;
+    const listRes = await fetch(listUrl);
+    const listData = await listRes.json();
+    const modelNames = listData.models ? listData.models.map((m: any) => m.name).join(", ") : "None";
 
-    const response = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ contents })
-    });
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      console.error("API Error Body:", data);
-      return { text: `Final Error: Status ${response.status} - ${data.error?.message || "Unknown Error"}.` };
-    }
-
-    return { text: data.candidates?.[0]?.content?.parts?.[0]?.text || "No response received." };
-
-  } catch (err: any) {
-    console.error("Fetch Failure:", err);
-    return { text: `System Error: ${err.message}. Please check your connection.` };
+    return { text: `Final Error Persistence. Tried all models but failed with: ${lastError}. Your key currently has access to: ${modelNames}. Please contact support with this info.` };
+  } catch {
+    return { text: `Critical Connectivity Error: ${lastError}. Please check your internet connection and API key.` };
   }
 }
 
