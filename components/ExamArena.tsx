@@ -14,6 +14,8 @@ const ExamArena: React.FC<ExamArenaProps> = ({ initialTopic, onClearTopic }) => 
   const [quiz, setQuiz] = useState<QuizQuestion[]>([]);
   const [answers, setAnswers] = useState<{ [key: number]: number }>({});
   const [submitted, setSubmitted] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
 
   // Responsible AI: Anti-cheat Essay area
   const [essayText, setEssayText] = useState('');
@@ -44,9 +46,13 @@ const ExamArena: React.FC<ExamArenaProps> = ({ initialTopic, onClearTopic }) => 
     const questions = await generateQuiz(topicStr, 'Medium');
     if (questions && questions.length > 0) {
       setQuiz(questions);
+      setError(null);
+    } else {
+      setError("Failed to generate quiz. Please check your API key or try again with a different topic.");
     }
     setLoading(false);
   };
+
 
 
   const handleGenerate = async () => {
@@ -96,7 +102,16 @@ const ExamArena: React.FC<ExamArenaProps> = ({ initialTopic, onClearTopic }) => 
         </div>
       </div>
 
+      {error && (
+        <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-xl flex items-center gap-3 animate-shake">
+          <AlertTriangle size={20} />
+          <p className="text-sm font-medium">{error}</p>
+          <button onClick={() => setError(null)} className="ml-auto text-xs underline">Dismiss</button>
+        </div>
+      )}
+
       {loading && quiz.length === 0 && (
+
         <div className="flex flex-col items-center justify-center py-12 bg-white rounded-xl border border-dashed border-indigo-200">
           <div className="relative">
             <Loader2 className="animate-spin text-indigo-600 mb-4" size={48} />

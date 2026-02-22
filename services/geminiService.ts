@@ -106,13 +106,14 @@ export async function generateCoachResponse(
 
   // Define fallback chain based exactly on the user's authorized models
   const endpoints = [
-    { ver: "v1beta", model: "gemini-2.5-flash" },
-    { ver: "v1", model: "gemini-2.5-flash" },
+    { ver: "v1beta", model: "gemini-1.5-flash" },
+    { ver: "v1", model: "gemini-1.5-flash" },
     { ver: "v1beta", model: "gemini-2.0-flash" },
     { ver: "v1", model: "gemini-2.0-flash" },
-    { ver: "v1beta", model: "gemini-2.5-pro" },
+    { ver: "v1beta", model: "gemini-1.5-pro" },
     { ver: "v1beta", model: "gemini-2.0-flash-lite" }
   ];
+
 
   let lastError = "";
 
@@ -225,9 +226,10 @@ export async function generateVisualAid(
   try {
     const res = await retry<GenerateContentResponse>(() =>
       ai.models.generateContent({
-        model: "gemini-2.5-flash",
+        model: "gemini-1.5-flash",
         contents: `Explain ${topic} clearly`,
       })
+
     );
 
     return res.text;
@@ -294,9 +296,10 @@ export async function generateLearningPath(
   try {
     const res = await retry<GenerateContentResponse>(() =>
       ai.models.generateContent({
-        model: "gemini-2.5-flash",
+        model: "gemini-1.5-flash",
         contents: [{ role: "user", parts: [{ text: prompt }] }],
       })
+
     );
 
     const nodes = safeParse<LearningNode[]>(res.text, []);
@@ -367,11 +370,14 @@ export async function generateQuiz(
     return [];
   }
 
+  // Consistent with working endpoints and common reliable models
   const endpoints = [
+    { ver: "v1beta", model: "gemini-1.5-flash" },
+    { ver: "v1", model: "gemini-1.5-flash" },
     { ver: "v1beta", model: "gemini-2.0-flash" },
     { ver: "v1", model: "gemini-2.0-flash" },
     { ver: "v1beta", model: "gemini-1.5-flash-latest" },
-    { ver: "v1", model: "gemini-1.5-flash-latest" }
+    { ver: "v1beta", model: "gemini-2.5-flash" }
   ];
 
   for (const endpoint of endpoints) {
@@ -386,19 +392,23 @@ export async function generateQuiz(
         })
       });
 
-      const data = await response.json();
       if (response.ok) {
+        const data = await response.json();
         const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
         const quiz = safeParse<QuizQuestion[]>(text, []);
         if (quiz.length > 0) return quiz;
+      } else {
+        const errorData = await response.json().catch(() => ({}));
+        console.warn(`Attempt with ${endpoint.model} failed:`, response.status, errorData);
       }
     } catch (err) {
-      console.warn(`Quiz generation failed for ${endpoint.model}:`, err);
+      console.warn(`Request failed for ${endpoint.model}:`, err);
     }
   }
 
   return [];
 }
+
 
 /* ===============================
    BLOB TO BASE64
@@ -427,9 +437,10 @@ export async function checkOriginality(
   try {
     const res = await retry<GenerateContentResponse>(() =>
       ai.models.generateContent({
-        model: "gemini-2.5-flash",
+        model: "gemini-1.5-flash",
         contents: `Check originality: ${text.substring(0, 500)}`,
       })
+
     );
 
     return {
