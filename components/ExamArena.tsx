@@ -84,7 +84,7 @@ const ExamArena: React.FC<ExamArenaProps> = ({ initialTopic, onClearTopic }) => 
         <h2 className="text-2xl font-bold text-slate-800 mb-4 flex items-center gap-2">
           <BookOpen className="text-indigo-600" /> Exam Arena
         </h2>
-        <div className="flex gap-4">
+        <div className="flex flex-col sm:flex-row gap-3">
           <input
             type="text"
             value={topic}
@@ -95,7 +95,7 @@ const ExamArena: React.FC<ExamArenaProps> = ({ initialTopic, onClearTopic }) => 
           <button
             onClick={handleGenerate}
             disabled={loading || !topic}
-            className="bg-indigo-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-indigo-700 disabled:opacity-50 transition-all flex items-center gap-2 shadow-lg shadow-indigo-100"
+            className="w-full sm:w-auto bg-indigo-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-indigo-700 disabled:opacity-50 transition-all flex items-center justify-center gap-2 shadow-lg shadow-indigo-100"
           >
             {loading ? <Loader2 className="animate-spin" size={18} /> : 'Generate Quiz'}
           </button>
