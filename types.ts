@@ -81,6 +81,12 @@ export interface Student {
   status: 'At Risk' | 'Stable' | 'Excelling';
 }
 
+export interface AIInsight {
+  title: string;
+  description: string;
+  type: 'success' | 'warning' | 'info';
+}
+
 // --- Dashboard Analytics Types ---
 
 export interface WeeklyMetric {
@@ -101,4 +107,5 @@ export interface DashboardStats {
   weakAreas: number;
   weeklyActivity: WeeklyMetric[];
   syllabusProgress: SyllabusMetric[];
+  aiInsights?: AIInsight[];
 }

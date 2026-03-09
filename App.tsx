@@ -12,6 +12,7 @@ import AuthPage from './components/AuthPage';
 import { AppView, User, DashboardStats, Student } from './types';
 import { LifeBuoy } from 'lucide-react';
 import { fetchStudents } from './services/studentService';
+import { generateDashboardInsights } from './services/geminiService';
 
 const App: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
@@ -21,7 +22,7 @@ const App: React.FC = () => {
 
   // --- Teacher Portal State (Lifted for shared access) ---
   const [isTeacherAuthenticated, setIsTeacherAuthenticated] = useState(false);
-  
+
   // Initialize with empty array
   const [students, setStudents] = useState<Student[]>([]);
   const [isDataLoaded, setIsDataLoaded] = useState(false);
@@ -44,11 +45,11 @@ const App: React.FC = () => {
       } else {
         // 3. Fallback to mock data if DB is empty or not connected
         const mocks: Student[] = [
-            { id: '1', name: 'Arjun Verma', grade: 'A', attendance: '92%', status: 'Excelling' },
-            { id: '2', name: 'Priya Sharma', grade: 'B+', attendance: '88%', status: 'Stable' },
-            { id: '3', name: 'Rahul Singh', grade: 'C', attendance: '75%', status: 'At Risk' },
-            { id: '4', name: 'Ananya Gupta', grade: 'A+', attendance: '98%', status: 'Excelling' },
-            { id: '5', name: 'Vikram Malhotra', grade: 'C-', attendance: '60%', status: 'At Risk' },
+          { id: '1', name: 'Arjun Verma', grade: 'A', attendance: '92%', status: 'Excelling' },
+          { id: '2', name: 'Priya Sharma', grade: 'B+', attendance: '88%', status: 'Stable' },
+          { id: '3', name: 'Rahul Singh', grade: 'C', attendance: '75%', status: 'At Risk' },
+          { id: '4', name: 'Ananya Gupta', grade: 'A+', attendance: '98%', status: 'Excelling' },
+          { id: '5', name: 'Vikram Malhotra', grade: 'C-', attendance: '60%', status: 'At Risk' },
         ];
         setStudents(mocks);
       }
@@ -97,8 +98,8 @@ const App: React.FC = () => {
         setStats(prev => {
           // Determine current day index (0=Mon, 6=Sun) for demo simply use Fri (4) or rotate
           // For accurate demo visual, let's update 'Fri' which is index 4 in our static array
-          const todayIndex = 4; 
-          
+          const todayIndex = 4;
+
           const newActivity = [...prev.weeklyActivity];
           newActivity[todayIndex] = {
             ...newActivity[todayIndex],
@@ -117,8 +118,44 @@ const App: React.FC = () => {
     return () => clearInterval(interval);
   }, [currentView]);
 
-  const handleLogin = (authenticatedUser: User) => {
+  const handleLogin = async (authenticatedUser: User) => {
     setUser(authenticatedUser);
+
+    // Generate fresh stats for the new user session
+    const freshStats: DashboardStats = {
+      topicsMastered: Math.floor(Math.random() * 20) + 30, // 30-50
+      studyHours: parseFloat((Math.random() * 10 + 20).toFixed(1)), // 20-30
+      avgScore: Math.floor(Math.random() * 15) + 75, // 75-90
+      weakAreas: Math.floor(Math.random() * 3) + 2, // 2-5
+      weeklyActivity: [
+        { day: 'Mon', hours: parseFloat((Math.random() * 2 + 1.5).toFixed(1)) },
+        { day: 'Tue', hours: parseFloat((Math.random() * 3 + 2).toFixed(1)) },
+        { day: 'Wed', hours: parseFloat((Math.random() * 2 + 1).toFixed(1)) },
+        { day: 'Thu', hours: parseFloat((Math.random() * 4 + 3).toFixed(1)) },
+        { day: 'Fri', hours: parseFloat((Math.random() * 3 + 2.5).toFixed(1)) },
+        { day: 'Sat', hours: parseFloat((Math.random() * 5 + 4).toFixed(1)) },
+        { day: 'Sun', hours: parseFloat((Math.random() * 2 + 1).toFixed(1)) },
+      ],
+      syllabusProgress: [
+        { name: 'Mastered', value: Math.floor(Math.random() * 10) + 60, color: '#10b981' },
+        { name: 'In Progress', value: Math.floor(Math.random() * 10) + 20, color: '#f59e0b' },
+        { name: 'To Learn', value: 10, color: '#cbd5e1' },
+      ],
+      aiInsights: undefined // Reset while loading
+    };
+
+    setStats(freshStats);
+
+    // Fetch AI insights asynchronously
+    try {
+      const insights = await generateDashboardInsights(authenticatedUser.name, freshStats);
+      setStats(prev => ({
+        ...prev,
+        aiInsights: insights
+      }));
+    } catch (error) {
+      console.error("Failed to generate insights:", error);
+    }
   };
 
   const handleLogout = () => {
@@ -148,14 +185,14 @@ const App: React.FC = () => {
         return <Dashboard user={user} stats={stats} onNavigate={handleNavigate} />;
       case AppView.CONCEPT_COACH:
         return (
-          <ConceptCoach 
-            initialTopic={activeTopic} 
-            onClearTopic={() => setActiveTopic(undefined)} 
+          <ConceptCoach
+            initialTopic={activeTopic}
+            onClearTopic={() => setActiveTopic(undefined)}
           />
         );
       case AppView.EXAM_ARENA:
         return (
-          <ExamArena 
+          <ExamArena
             initialTopic={activeTopic}
             onClearTopic={() => setActiveTopic(undefined)}
           />
@@ -168,7 +205,7 @@ const App: React.FC = () => {
         return <LearningPath onNavigate={handleNavigate} />;
       case AppView.TEACHER_DASHBOARD:
         return (
-          <TeacherDashboard 
+          <TeacherDashboard
             isAuthenticated={isTeacherAuthenticated}
             setIsAuthenticated={setIsTeacherAuthenticated}
             students={students}
@@ -177,7 +214,7 @@ const App: React.FC = () => {
         );
       case AppView.CUSTOMER_SUPPORT:
         return (
-          <CustomerSupport 
+          <CustomerSupport
             isTeacherAuthenticated={isTeacherAuthenticated}
             students={students}
             setStudents={setStudents}
@@ -190,8 +227,8 @@ const App: React.FC = () => {
 
   return (
     <div className="flex h-screen bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-50 font-sans overflow-hidden transition-colors duration-200 relative">
-      <Sidebar 
-        currentView={currentView} 
+      <Sidebar
+        currentView={currentView}
         onChangeView={(view) => handleNavigate(view)}
         isMobileMenuOpen={isMobileMenuOpen}
         setIsMobileMenuOpen={setIsMobileMenuOpen}
@@ -199,7 +236,7 @@ const App: React.FC = () => {
         onLogout={handleLogout}
         onUpdateUser={handleUpdateUser}
       />
-      
+
       <main className="flex-1 overflow-auto w-full pt-16 md:pt-0">
         {renderView()}
       </main>
