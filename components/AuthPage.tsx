@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Mail, Lock, User as UserIcon, ArrowRight, Loader2, BrainCircuit, Sparkles, ShieldCheck, Zap } from 'lucide-react';
 import { User } from '../types';
+import { supabase } from '../services/supabaseClient';
 
 interface AuthPageProps {
   onLogin: (user: User) => void;
@@ -15,25 +16,59 @@ const AuthPage: React.FC<AuthPageProps> = ({ onLogin }) => {
     password: ''
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
-    // Simulate secure network request delay
-    setTimeout(() => {
-      const name = isLogin ? (formData.email.split('@')[0] || 'Student') : formData.name;
-      const formattedName = name.charAt(0).toUpperCase() + name.slice(1);
+    try {
+      if (isLogin) {
+        // --- Supabase Sign In ---
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email: formData.email,
+          password: formData.password,
+        });
 
-      const user: User = {
-        id: Date.now().toString(),
-        name: formattedName,
-        email: formData.email,
-        avatar: `https://ui-avatars.com/api/?name=${formattedName}&background=6366f1&color=fff`
-      };
+        if (error) throw error;
 
-      onLogin(user);
+        if (data.user) {
+          const user: User = {
+            id: data.user.id,
+            name: data.user.user_metadata.full_name || data.user.email?.split('@')[0] || 'Student',
+            email: data.user.email || '',
+            avatar: `https://ui-avatars.com/api/?name=${data.user.email}&background=6366f1&color=fff`
+          };
+          onLogin(user);
+        }
+      } else {
+        // --- Supabase Sign Up ---
+        const { data, error } = await supabase.auth.signUp({
+          email: formData.email,
+          password: formData.password,
+          options: {
+            data: {
+              full_name: formData.name,
+            }
+          }
+        });
+
+        if (error) throw error;
+
+        if (data.user) {
+          const user: User = {
+            id: data.user.id,
+            name: formData.name || data.user.email?.split('@')[0] || 'Student',
+            email: data.user.email || '',
+            avatar: `https://ui-avatars.com/api/?name=${formData.name}&background=6366f1&color=fff`
+          };
+          onLogin(user);
+        }
+      }
+    } catch (error: any) {
+      console.error('Auth error:', error.message);
+      alert(error.message); // Simple alert for feedback
+    } finally {
       setIsLoading(false);
-    }, 1500);
+    }
   };
 
   return (
@@ -57,10 +92,10 @@ const AuthPage: React.FC<AuthPageProps> = ({ onLogin }) => {
               <BrainCircuit className="text-white w-24 h-24" />
             </div>
             <h1 className="text-6xl font-black text-white tracking-tighter mb-4">
-              Educlarity<span className="text-indigo-400">.AI</span>
+              EduFree<span className="text-indigo-400">.AI</span>
             </h1>
             <p className="text-indigo-200/60 text-xl font-medium tracking-[0.3em] uppercase">
-              Future of Learning
+              Learn Anytime. Anywhere. Even Offline.
             </p>
           </div>
         </div>
@@ -84,7 +119,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ onLogin }) => {
             <div className="mb-10 block md:hidden">
               <div className="flex items-center gap-2 mb-6">
                 <BrainCircuit className="text-indigo-500 w-8 h-8" />
-                <span className="text-xl font-bold text-white">Educlarity.AI</span>
+                <span className="text-xl font-bold text-white">EduFree.AI</span>
               </div>
             </div>
 

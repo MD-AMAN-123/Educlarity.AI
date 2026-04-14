@@ -8,6 +8,8 @@ export enum AppView {
   LEARNING_PATH = 'LEARNING_PATH',
   TEACHER_DASHBOARD = 'TEACHER_DASHBOARD',
   CUSTOMER_SUPPORT = 'CUSTOMER_SUPPORT',
+  DOUBT_SOLVER = 'DOUBT_SOLVER',
+  SMART_ANALYTICS = 'SMART_ANALYTICS',
 }
 
 export enum CoachMode {
@@ -100,11 +102,21 @@ export interface SyllabusMetric {
   color: string;
 }
 
+export interface DailyGoal {
+  id: string;
+  title: string;
+  completed: boolean;
+  xp: number;
+}
+
 export interface DashboardStats {
   topicsMastered: number;
   studyHours: number;
   avgScore: number;
   weakAreas: number;
+  streak: number;
+  xp: number;
+  dailyGoals: DailyGoal[];
   weeklyActivity: WeeklyMetric[];
   syllabusProgress: SyllabusMetric[];
   aiInsights?: AIInsight[];

@@ -5,12 +5,13 @@ import { ChatMessage, Student } from '../types';
 import { addStudent, removeStudent } from '../services/studentService';
 
 interface CustomerSupportProps {
+  user: User | null;
   isTeacherAuthenticated?: boolean;
   students?: Student[];
   setStudents?: React.Dispatch<React.SetStateAction<Student[]>>;
 }
 
-const CustomerSupport: React.FC<CustomerSupportProps> = ({ isTeacherAuthenticated, students, setStudents }) => {
+const CustomerSupport: React.FC<CustomerSupportProps> = ({ user, isTeacherAuthenticated, students, setStudents }) => {
   const [activeTab, setActiveTab] = useState<'chat' | 'ticket'>('chat');
   
   // --- Chat State ---
@@ -20,7 +21,7 @@ const CustomerSupport: React.FC<CustomerSupportProps> = ({ isTeacherAuthenticate
       role: 'model',
       text: isTeacherAuthenticated 
         ? 'Welcome, Teacher! I can help you manage your class. You can ask me to "Add a new student called Rahul with Grade A" or "Delete Arjun Verma".'
-        : 'Hi there! I am the Educlarity Support Bot. How can I help you with your account or studies today?',
+        : 'Hi there! I am the EduFree Support Bot. How can I help you with your account or studies today?',
       timestamp: Date.now()
     }
   ]);
@@ -50,8 +51,10 @@ const CustomerSupport: React.FC<CustomerSupportProps> = ({ isTeacherAuthenticate
       attendance: studentData.attendance || "0%",
       status: studentData.status || "Stable"
     };
+    
+    if (!user) return "Error: No authenticated user found.";
 
-    const added = await addStudent(newStudent as any);
+    const added = await addStudent(newStudent as any, user.id);
     if (added) {
       setStudents(prev => [added, ...prev]);
       return `Successfully added student: ${added.name} (ID: ${added.id}).`;
@@ -208,7 +211,7 @@ const CustomerSupport: React.FC<CustomerSupportProps> = ({ isTeacherAuthenticate
                    <div className="p-2 bg-indigo-50 dark:bg-indigo-900/30 rounded-lg text-indigo-600 dark:text-indigo-400"><Mail size={20} /></div>
                    <div>
                       <p className="text-xs text-slate-400 uppercase font-bold">Email Us</p>
-                      <p className="font-medium">support@educlarity.com</p>
+                      <p className="font-medium">support@edufree.ai</p>
                    </div>
                 </div>
                 <div className="flex items-center gap-3 text-slate-600 dark:text-slate-300">

@@ -68,14 +68,13 @@ const CreatorStudio: React.FC = () => {
     setInputText('');
 
     try {
-      // Pass the activeBot profile to the service to use its specific persona
       const response = await generateCoachResponse(
         messages.map(m => ({ role: m.role, text: m.text })),
         userMsg.text,
-        CoachMode.LEARNING, // Default to learning mode for bots
-        Language.ENGLISH,   // Default to English, though model adapts
+        CoachMode.LEARNING,
+        Language.ENGLISH,
         undefined,
-        activeBot // <--- CRITICAL: Passing the bot profile here
+        activeBot
       );
 
       const aiMsg: ChatMessage = {
@@ -93,74 +92,75 @@ const CreatorStudio: React.FC = () => {
     }
   };
 
-  // If in Chat Mode
   if (activeBot) {
     return (
-      <div className="h-[calc(100vh-64px)] md:h-full flex flex-col bg-slate-50">
-        {/* Chat Header */}
-        <div className="bg-white border-b p-4 flex items-center justify-between shadow-sm sticky top-0 z-10">
+      <div className="h-[calc(100vh-64px)] md:h-full flex flex-col bg-slate-50 dark:bg-slate-950">
+        <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b dark:border-slate-800 p-4 flex items-center justify-between shadow-sm sticky top-0 z-10">
           <div className="flex items-center gap-3">
-             <button onClick={() => setActiveBot(null)} className="p-2 hover:bg-slate-100 rounded-full transition-colors">
-                <ArrowLeft size={20} className="text-slate-600" />
+             <button onClick={() => setActiveBot(null)} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors">
+                <ArrowLeft size={20} className="text-slate-600 dark:text-slate-400" />
              </button>
-             <div className="w-10 h-10 bg-indigo-50 rounded-full flex items-center justify-center text-2xl border">
+             <div className="w-10 h-10 bg-indigo-50 dark:bg-indigo-900/30 rounded-xl flex items-center justify-center text-2xl border dark:border-slate-700">
                 {activeBot.icon}
              </div>
              <div>
-               <h3 className="font-bold text-slate-800">{activeBot.name}</h3>
-               <p className="text-xs text-slate-500">{activeBot.subject} • {activeBot.personality}</p>
+                <h3 className="font-bold text-slate-800 dark:text-slate-100">{activeBot.name}</h3>
+                <p className="text-[10px] uppercase font-bold text-slate-500 dark:text-slate-500 tracking-wider font-mono">{activeBot.subject} • {activeBot.personality}</p>
              </div>
           </div>
-          <button onClick={() => setActiveBot(null)} className="text-sm text-slate-500 hover:text-red-500">
-            End Chat
+          <button onClick={() => setActiveBot(null)} className="text-sm font-bold text-slate-500 hover:text-red-500 dark:hover:text-red-400 transition-colors">
+            End Session
           </button>
         </div>
 
-        {/* Messages Area */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        <div className="flex-1 overflow-y-auto p-4 space-y-6">
            {messages.map((msg) => (
              <div key={msg.id} className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
-                <div className={`max-w-[85%] rounded-2xl p-4 shadow-sm text-sm md:text-base ${
+                <div className={`max-w-[85%] rounded-3xl p-5 shadow-sm text-sm md:text-base leading-relaxed ${
                   msg.role === 'user' 
-                   ? 'bg-slate-800 text-white rounded-br-none' 
-                   : 'bg-white text-slate-800 border rounded-bl-none'
+                   ? 'bg-indigo-600 text-white rounded-br-none' 
+                   : 'bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 border dark:border-slate-700 rounded-bl-none'
                 }`}>
                   <p className="whitespace-pre-wrap">{msg.text}</p>
                 </div>
-                <span className="text-[10px] text-slate-400 mt-1 px-1">
-                  {msg.role === 'user' ? 'You' : activeBot.name}
+                <span className="text-[10px] font-bold text-slate-400 dark:text-slate-600 mt-2 px-2 uppercase tracking-tight">
+                  {msg.role === 'user' ? 'Me' : activeBot.name}
                 </span>
              </div>
            ))}
            {isProcessing && (
-             <div className="flex justify-start animate-pulse">
-               <div className="bg-white p-3 rounded-2xl rounded-bl-none shadow-sm border text-sm text-slate-500 italic">
-                 {activeBot.name} is thinking...
+             <div className="flex justify-start">
+               <div className="bg-white dark:bg-slate-800 p-4 rounded-3xl rounded-bl-none shadow-sm border dark:border-slate-700 flex items-center gap-2">
+                 <div className="flex gap-1">
+                   <div className="w-1.5 h-1.5 bg-indigo-400 rounded-full animate-bounce"></div>
+                   <div className="w-1.5 h-1.5 bg-indigo-500 rounded-full animate-bounce delay-100"></div>
+                   <div className="w-1.5 h-1.5 bg-indigo-600 rounded-full animate-bounce delay-200"></div>
+                 </div>
+                 <span className="text-xs font-bold text-slate-500 italic">{activeBot.name} is formulating a response...</span>
                </div>
              </div>
            )}
            <div ref={messagesEndRef} />
         </div>
 
-        {/* Input Area */}
-        <div className="p-4 bg-white border-t sticky bottom-0">
+        <div className="p-4 bg-white/50 dark:bg-slate-900/50 backdrop-blur-xl border-t dark:border-slate-800 sticky bottom-0">
            <div className="max-w-4xl mx-auto flex items-center gap-3">
              <input
                type="text"
                value={inputText}
                onChange={(e) => setInputText(e.target.value)}
                onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
-               placeholder={`Ask ${activeBot.name} about ${activeBot.subject}...`}
-               className="flex-1 border rounded-full px-5 py-3 outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-50"
+               placeholder={`Message ${activeBot.name}...`}
+               className="flex-1 bg-slate-100 dark:bg-slate-800 border dark:border-slate-700 rounded-2xl px-6 py-4 outline-none focus:ring-2 focus:ring-indigo-500 dark:text-white font-medium"
                disabled={isProcessing}
                autoFocus
              />
              <button
                onClick={handleSendMessage}
                disabled={!inputText.trim() || isProcessing}
-               className="bg-indigo-600 text-white p-3 rounded-full hover:bg-indigo-700 disabled:opacity-50 transition-colors shadow-lg"
+               className="bg-indigo-600 text-white p-4 rounded-2xl hover:bg-indigo-700 transition-all shadow-lg active:scale-95"
              >
-               <Send size={20} />
+               <Send size={24} />
              </button>
            </div>
         </div>
@@ -168,47 +168,48 @@ const CreatorStudio: React.FC = () => {
     );
   }
 
-  // Default Studio View
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-8 animate-fade-in pb-20">
-      <header>
-        <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
-          <Sparkles className="text-yellow-500" /> Creator Studio
+    <div className="p-6 max-w-7xl mx-auto space-y-8 animate-fade-in pb-24">
+      <header className="space-y-2">
+        <h1 className="text-4xl font-black tracking-tight text-slate-900 dark:text-white flex items-center gap-3">
+          <div className="bg-amber-100 dark:bg-amber-900/30 p-2 rounded-xl">
+            <Sparkles className="text-amber-500" size={32} />
+          </div>
+          Creator <span className="text-indigo-600">Studio</span>
         </h1>
-        <p className="text-slate-500">Build your own study assistants without writing code.</p>
+        <p className="text-slate-500 dark:text-slate-400 font-medium">Build hyper-personalized AI tutors tailored to your learning style.</p>
       </header>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Creator Form */}
-        <div className="bg-white p-6 rounded-xl border shadow-sm h-fit sticky top-6">
-          <h3 className="font-semibold text-lg mb-4 flex items-center gap-2">
-            <Bot size={20} className="text-indigo-600" /> Create New Bot
+        <div className="bg-white dark:bg-slate-800 p-8 rounded-3xl border dark:border-slate-700 shadow-xl h-fit sticky top-6">
+          <h3 className="font-bold text-xl mb-6 flex items-center gap-2 dark:text-white">
+            <Bot size={24} className="text-indigo-600" /> New Assistant
           </h3>
-          <div className="space-y-4">
+          <div className="space-y-6">
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Bot Name</label>
+              <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-2">Bot Name</label>
               <input 
                 type="text" 
-                className="w-full border rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-indigo-500"
-                placeholder="e.g. Physics Ph.D"
+                className="w-full bg-slate-50 dark:bg-slate-900 border dark:border-slate-700 rounded-2xl px-4 py-3 outline-none focus:ring-2 focus:ring-indigo-500 dark:text-white"
+                placeholder="e.g. History Guru"
                 value={newBot.name}
                 onChange={e => setNewBot({...newBot, name: e.target.value})}
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Subject Expertise</label>
+              <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-2">Expertise</label>
               <input 
                 type="text" 
-                className="w-full border rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-indigo-500"
-                placeholder="e.g. Quantum Mechanics"
+                className="w-full bg-slate-50 dark:bg-slate-900 border dark:border-slate-700 rounded-2xl px-4 py-3 outline-none focus:ring-2 focus:ring-indigo-500 dark:text-white"
+                placeholder="e.g. World War II"
                 value={newBot.subject}
                 onChange={e => setNewBot({...newBot, subject: e.target.value})}
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Teaching Style</label>
+              <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-2">Personality</label>
               <select 
-                className="w-full border rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
+                className="w-full bg-slate-50 dark:bg-slate-900 border dark:border-slate-700 rounded-2xl px-4 py-3 outline-none focus:ring-2 focus:ring-indigo-500 bg-white dark:text-white"
                 value={newBot.personality}
                 onChange={e => setNewBot({...newBot, personality: e.target.value})}
               >
@@ -222,57 +223,64 @@ const CreatorStudio: React.FC = () => {
             <button 
               onClick={handleCreate}
               disabled={!newBot.name || !newBot.subject}
-              className="w-full bg-slate-900 text-white py-2 rounded-lg font-medium hover:bg-slate-800 transition-colors flex justify-center items-center gap-2 disabled:opacity-50"
+              className="w-full bg-indigo-600 text-white py-4 rounded-2xl font-bold hover:bg-indigo-700 transition-all flex justify-center items-center gap-2 disabled:opacity-50 shadow-lg active:scale-95"
             >
-              <Save size={18} /> Create Bot
+              <Save size={20} /> Deploy Bot
             </button>
           </div>
         </div>
 
-        {/* Bot List */}
-        <div className="lg:col-span-2">
-           <h3 className="font-semibold text-lg mb-4 text-slate-700">Your Assistants</h3>
-           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="lg:col-span-2 space-y-6">
+           <div className="flex items-center justify-between">
+              <h3 className="font-bold text-xl text-slate-800 dark:text-white">Active Assistants</h3>
+              <span className="bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 px-3 py-1 rounded-full text-xs font-black">
+                {bots.length} TOTAL
+              </span>
+           </div>
+           
+           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
             {bots.map((bot) => (
-              <div key={bot.id} className="bg-white p-6 rounded-xl border shadow-sm hover:border-indigo-500 hover:shadow-md transition-all group relative overflow-hidden flex flex-col justify-between">
-                <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-                  <Bot size={64} />
-                </div>
+              <div key={bot.id} className="bg-white dark:bg-slate-800 p-6 rounded-3xl border dark:border-slate-700 shadow-md hover:border-indigo-500 hover:shadow-2xl transition-all group relative overflow-hidden flex flex-col h-full ring-offset-2 hover:ring-2 ring-indigo-500/20">
+                <div className="absolute -top-4 -right-4 w-24 h-24 bg-indigo-500/5 rounded-full group-hover:scale-150 transition-transform"></div>
                 
-                <div className="flex items-start gap-4 mb-4">
-                  <div className="text-4xl bg-slate-50 p-3 rounded-lg shadow-inner">{bot.icon}</div>
-                  <div>
-                    <h4 className="font-bold text-lg text-slate-800">{bot.name}</h4>
-                    <p className="text-sm text-indigo-600 font-medium">{bot.subject}</p>
-                    <p className="text-xs text-slate-500 mt-1 italic">"{bot.personality}"</p>
+                <div className="flex items-start gap-4 mb-6 relative z-10">
+                  <div className="text-4xl bg-indigo-50 dark:bg-slate-900 p-4 rounded-2xl shadow-inner border dark:border-slate-700 group-hover:rotate-6 transition-transform">
+                    {bot.icon}
+                  </div>
+                  <div className="min-w-0">
+                    <h4 className="font-bold text-xl text-slate-900 dark:text-white truncate">{bot.name}</h4>
+                    <p className="text-sm text-indigo-600 dark:text-indigo-400 font-bold tracking-tight mb-1">{bot.subject}</p>
+                    <div className="flex items-center gap-1.5 opacity-60 text-[10px] font-bold uppercase tracking-tighter dark:text-slate-400">
+                      <Bot size={12} /> {bot.personality}
+                    </div>
                   </div>
                 </div>
 
-                <div className="flex gap-2 mt-auto">
+                <div className="flex gap-2 mt-auto relative z-10">
                   <button 
                     onClick={() => startChat(bot)}
-                    className="flex-1 bg-indigo-600 text-white py-2.5 rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors flex items-center justify-center gap-2"
+                    className="flex-1 bg-slate-900 dark:bg-slate-700 text-white py-3 rounded-2xl text-sm font-bold hover:bg-black dark:hover:bg-slate-600 transition-all flex items-center justify-center gap-2 group-hover:bg-indigo-600"
                   >
-                    <MessageCircle size={16} /> Chat Now
+                    <MessageCircle size={18} /> Start Session
                   </button>
                   <button 
                     onClick={() => setBots(bots.filter(b => b.id !== bot.id))}
-                    className="p-2.5 border rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors"
-                    title="Delete Bot"
+                    className="p-3 bg-red-50 dark:bg-red-900/10 border dark:border-red-900/30 rounded-2xl text-red-500 hover:bg-red-500 hover:text-white transition-all"
                   >
-                    <Trash2 size={18} />
+                    <Trash2 size={20} />
                   </button>
                 </div>
               </div>
             ))}
-            
-            {bots.length === 0 && (
-                <div className="col-span-full py-12 text-center border-2 border-dashed rounded-xl bg-slate-50/50">
-                    <Bot className="mx-auto text-slate-300 mb-2" size={48} />
-                    <p className="text-slate-500">No bots created yet. Use the form to make one!</p>
-                </div>
-            )}
           </div>
+
+          {bots.length === 0 && (
+            <div className="bg-slate-100 dark:bg-slate-800/50 rounded-3xl border-2 border-dashed dark:border-slate-700 p-16 text-center">
+              <Bot className="mx-auto text-slate-300 dark:text-slate-700 mb-6" size={80} />
+              <h4 className="text-xl font-bold dark:text-white">Your Studio is Empty</h4>
+              <p className="text-slate-500 dark:text-slate-400 max-w-xs mx-auto mt-2 font-medium">Create your first custom AI tutor to populate your studio workspace.</p>
+            </div>
+          )}
         </div>
       </div>
     </div>

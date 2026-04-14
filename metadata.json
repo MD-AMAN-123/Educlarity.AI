@@ -1,5 +1,5 @@
 {
-  "name": "Educlarity.AI - India's Personal Learning Assistant",
+  "name": "EduFree.AI - India's Personal Learning Assistant",
   "description": "An AI-powered personalized learning platform tailored for Indian students, featuring explainable AI, exam readiness, multilingual support, and responsible GenAI tools.",
   "requestFramePermissions": [
     "microphone"

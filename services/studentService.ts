@@ -1,47 +1,51 @@
 import { supabase } from './supabaseClient';
 import { Student } from '../types';
 
-export const fetchStudents = async (): Promise<Student[]> => {
+export const fetchStudents = async (userId?: string): Promise<Student[]> => {
   try {
-    const { data, error } = await supabase
+    let query = supabase
       .from('students')
       .select('*')
       .order('created_at', { ascending: false });
     
+    if (userId) {
+      query = query.eq('user_id', userId);
+    }
+    
+    const { data, error } = await query;
+    
     if (error) {
-      console.warn('Supabase fetch error (using mock data):', error.message);
+      console.warn('Supabase fetch error:', error.message);
       return [];
     }
     
     return (data as Student[]) || [];
   } catch (err) {
-    console.warn('Network error fetching students (using mock data).');
+    console.warn('Network error fetching students.');
     return [];
   }
 };
 
-export const addStudent = async (student: Omit<Student, 'id'>): Promise<Student | null> => {
+export const addStudent = async (student: Omit<Student, 'id'>, userId: string): Promise<Student | null> => {
   try {
     const { data, error } = await supabase
       .from('students')
-      .insert([student])
+      .insert([{ ...student, user_id: userId }])
       .select()
       .single();
 
     if (error) {
-      console.warn('Supabase insert error (simulating success):', error.message);
-      // Return a mock student object so the UI can update
-      return { id: Date.now().toString(), ...student } as Student;
+      console.error('Supabase insert error:', error.message);
+      return null;
     }
     return data as Student;
   } catch (err) {
-    console.warn('Network error adding student (simulating success).');
-    return { id: Date.now().toString(), ...student } as Student;
+    console.error('Network error adding student.');
+    return null;
   }
 };
 
 export const updateStudent = async (id: string, updates: Partial<Student>): Promise<Student | null> => {
-  // Ensure ID is excluded from the update payload to prevent PK conflicts
   const { id: _, ...safeUpdates } = updates as any;
 
   try {
@@ -53,16 +57,13 @@ export const updateStudent = async (id: string, updates: Partial<Student>): Prom
       .single();
 
     if (error) {
-      console.warn('Supabase update error (simulating success):', error.message);
-      // Optimistic return: assumes the update would have worked. 
-      // Note: If 'updates' is partial, this might return an incomplete object, 
-      // but the UI typically passes full objects in this app.
-      return { id, ...safeUpdates } as Student;
+      console.error('Supabase update error:', error.message);
+      return null;
     }
     return data as Student;
   } catch (err) {
-    console.warn('Network error updating student (simulating success).');
-    return { id, ...safeUpdates } as Student;
+    console.error('Network error updating student.');
+    return null;
   }
 };
 
@@ -74,12 +75,12 @@ export const removeStudent = async (id: string): Promise<boolean> => {
       .eq('id', id);
 
     if (error) {
-      console.warn('Supabase delete error (simulating success):', error.message);
-      return true;
+      console.error('Supabase delete error:', error.message);
+      return false;
     }
     return true;
   } catch (err) {
-    console.warn('Network error deleting student (simulating success).');
-    return true;
+    console.error('Network error deleting student.');
+    return false;
   }
 };

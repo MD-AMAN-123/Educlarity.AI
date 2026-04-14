@@ -34,26 +34,63 @@ const ExamArena: React.FC<ExamArenaProps> = ({ initialTopic, onClearTopic }) => 
     }
   }, [initialTopic, onClearTopic]);
 
+  const [timeLeft, setTimeLeft] = useState(600);
+  const [totalTime] = useState(600);
+  const [timerActive, setTimerActive] = useState(false);
+
+  useEffect(() => {
+    let timer: any;
+    if (timerActive && timeLeft > 0 && !submitted) {
+      timer = setInterval(() => {
+        setTimeLeft(prev => prev - 1);
+      }, 1000);
+    } else if (timeLeft === 0 && timerActive) {
+      setSubmitted(true);
+      setTimerActive(false);
+    }
+    return () => clearInterval(timer);
+  }, [timerActive, timeLeft, submitted]);
+
   const generateQuizInternal = async (topicStr: string) => {
     setLoading(true);
     setSubmitted(false);
     setAnswers({});
+    setTimerActive(false);
+    setTimeLeft(totalTime);
+    setQuiz([]);
 
-    // We don't clear setQuiz([]) immediately if we want "remaining all unchanged" 
-    // but the user might want a fresh start. Let's clear it only if it's the FIRST generation
-    // or keep it to avoid layout jump.
+    try {
+      let questions: QuizQuestion[] = [];
+      if (navigator.onLine) {
+        questions = await generateQuiz(topicStr, 'Medium');
+      } else {
+        const { offlineAIService } = await import('../services/offlineAiService');
+        const prompt = `Generate 5 challenging multiple choice questions for the topic: ${topicStr}. Provide response in this exact JSON format: [{"id": 1, "question": "...", "options": ["A", "B", "C", "D"], "correctAnswerIndex": 0, "explanation": "..."}]`;
+        const response = await offlineAIService.generateResponse([
+          { role: 'system', content: 'You are a quiz master. Create challenging educational quizzes. Output ONLY valid JSON.' },
+          { role: 'user', content: prompt }
+        ]);
+        
+        // Robust JSON parsing
+        const jsonMatch = response.match(/\[.*\]/s);
+        const jsonStr = jsonMatch ? jsonMatch[0] : response;
+        questions = JSON.parse(jsonStr);
+      }
 
-    const questions = await generateQuiz(topicStr, 'Medium');
-    if (questions && questions.length > 0) {
-      setQuiz(questions);
-      setError(null);
-    } else {
-      setError("Failed to generate quiz. Please check your API key or try again with a different topic.");
+      if (questions && questions.length > 0) {
+        setQuiz(questions);
+        setError(null);
+        setTimerActive(true);
+      } else {
+        setError("Failed to generate quiz questions.");
+      }
+    } catch (err) {
+      console.error(err);
+      setError("Failed to generate quiz. Check your connection or AI model status.");
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
-
-
 
   const handleGenerate = async () => {
     if (!topic) return;
@@ -67,6 +104,7 @@ const ExamArena: React.FC<ExamArenaProps> = ({ initialTopic, onClearTopic }) => 
 
   const handleSubmit = () => {
     setSubmitted(true);
+    setTimerActive(false);
   };
 
   const handleOriginalityCheck = async () => {
@@ -81,46 +119,71 @@ const ExamArena: React.FC<ExamArenaProps> = ({ initialTopic, onClearTopic }) => 
     <div className="p-6 max-w-4xl mx-auto space-y-8 animate-fade-in pb-20">
 
       <div className="bg-white p-6 rounded-xl border shadow-sm">
-        <h2 className="text-2xl font-bold text-slate-800 mb-4 flex items-center gap-2">
-          <BookOpen className="text-indigo-600" /> Exam Arena
+        <h2 className="text-2xl font-bold text-slate-800 mb-1 flex items-center gap-2">
+          <BookOpen className="text-indigo-600" /> EduFree Adaptive Quizzes
         </h2>
-        <div className="flex flex-col sm:flex-row gap-3">
+        <p className="text-xs text-slate-500 mb-4">Difficulty adjusts based on your performance in real-time.</p>
+        <div className="flex flex-col sm:flex-row gap-4">
           <input
             type="text"
             value={topic}
             onChange={(e) => setTopic(e.target.value)}
-            placeholder="Enter topic (e.g., Organic Chemistry, Indian History)..."
-            className="flex-1 border rounded-lg px-4 py-2 outline-none focus:ring-2 focus:ring-indigo-500"
+            placeholder="Enter topic (e.g. Organic Chemistry, Indian History)..."
+            className="flex-1 bg-slate-50 dark:bg-slate-900 border dark:border-slate-700 rounded-2xl px-6 py-3 outline-none focus:ring-2 focus:ring-indigo-500 transition-all font-medium"
           />
           <button
             onClick={handleGenerate}
             disabled={loading || !topic}
-            className="w-full sm:w-auto bg-indigo-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-indigo-700 disabled:opacity-50 transition-all flex items-center justify-center gap-2 shadow-lg shadow-indigo-100"
+            className="w-full sm:w-auto bg-indigo-600 text-white px-8 py-3 rounded-2xl font-bold hover:bg-indigo-700 disabled:opacity-50 transition-all flex items-center justify-center gap-2 shadow-lg shadow-indigo-100 active:scale-95"
           >
-            {loading ? <Loader2 className="animate-spin" size={18} /> : 'Generate Quiz'}
+            {loading ? <Loader2 className="animate-spin" size={18} /> : 'Start Assessment'}
           </button>
         </div>
       </div>
 
+      {quiz.length > 0 && (
+        <div className="sticky top-0 z-20 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md p-4 rounded-2xl border dark:border-slate-800 shadow-sm flex flex-col gap-2">
+           <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-bold text-slate-700 dark:text-slate-300">Time Remaining:</span>
+                <span className={`text-lg font-mono font-bold ${timeLeft < 60 ? 'text-red-500 animate-pulse' : 'text-indigo-600'}`}>
+                  {Math.floor(timeLeft / 60)}:{(timeLeft % 60).toString().padStart(2, '0')}
+                </span>
+              </div>
+              <div className="text-xs font-bold text-slate-500">
+                {quiz.filter((q, i) => answers[q.id] !== undefined).length} / {quiz.length} Answered
+              </div>
+           </div>
+           <div className="w-full h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+              <div 
+                className={`h-full transition-all duration-1000 ${timeLeft < 60 ? 'bg-red-500' : 'bg-indigo-600'}`}
+                style={{ width: `${(timeLeft / totalTime) * 100}%` }}
+              ></div>
+           </div>
+        </div>
+      )}
+
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-xl flex items-center gap-3 animate-shake">
+        <div className="bg-red-50 dark:bg-red-900/10 border border-red-100 dark:border-red-900/30 text-red-600 p-4 rounded-2xl flex items-center gap-3 animate-shake">
           <AlertTriangle size={20} />
-          <p className="text-sm font-medium">{error}</p>
-          <button onClick={() => setError(null)} className="ml-auto text-xs underline">Dismiss</button>
+          <p className="text-sm font-bold">{error}</p>
+          <button onClick={() => setError(null)} className="ml-auto text-xs underline font-bold">Dismiss</button>
         </div>
       )}
 
       {loading && quiz.length === 0 && (
-
-        <div className="flex flex-col items-center justify-center py-12 bg-white rounded-xl border border-dashed border-indigo-200">
-          <div className="relative">
-            <Loader2 className="animate-spin text-indigo-600 mb-4" size={48} />
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="w-2 h-2 bg-indigo-400 rounded-full animate-ping"></div>
+        <div className="flex flex-col items-center justify-center py-20 bg-white dark:bg-slate-800 rounded-3xl border dark:border-slate-700 shadow-xl overflow-hidden relative">
+          <div className="absolute inset-0 bg-gradient-to-br from-indigo-50 to-purple-50 dark:from-indigo-900/10 dark:to-purple-900/10 opacity-50"></div>
+          <div className="relative flex flex-col items-center">
+            <Loader2 className="animate-spin text-indigo-600 mb-6" size={60} />
+            <h3 className="text-xl font-bold text-slate-800 dark:text-white">Curating Your Assessment</h3>
+            <p className="text-slate-500 dark:text-slate-400 mt-2">EduFree AI is synthesizing questions for "{topic}"</p>
+            <div className="mt-8 flex gap-2">
+              <div className="w-2 h-2 bg-indigo-400 rounded-full animate-bounce"></div>
+              <div className="w-2 h-2 bg-indigo-500 rounded-full animate-bounce delay-100"></div>
+              <div className="w-2 h-2 bg-indigo-600 rounded-full animate-bounce delay-200"></div>
             </div>
           </div>
-          <p className="text-slate-500 font-medium">Creating real-time questions for "{topic}"...</p>
-          <p className="text-xs text-slate-400 mt-2">Our AI is fetching the latest curriculum data</p>
         </div>
       )}
 
@@ -134,9 +197,12 @@ const ExamArena: React.FC<ExamArenaProps> = ({ initialTopic, onClearTopic }) => 
       {quiz.length > 0 && (
         <div className={`space-y-6 transition-opacity duration-300 ${loading ? 'opacity-50' : 'opacity-100'}`}>
           {loading && (
-            <div className="bg-indigo-50 border border-indigo-100 p-3 rounded-lg flex items-center gap-3 text-indigo-700 text-sm animate-pulse">
-              <Loader2 className="animate-spin" size={16} />
-              Updating quiz content in real-time...
+            <div className="bg-indigo-50 border border-indigo-100 p-3 rounded-lg flex items-center justify-between text-indigo-700 text-sm animate-pulse">
+              <div className="flex items-center gap-3">
+                <Loader2 className="animate-spin" size={16} />
+                Updating quiz content in real-time...
+              </div>
+              <span className="text-[10px] font-bold bg-indigo-200 px-2 py-0.5 rounded uppercase">On-Device Processing</span>
             </div>
           )}
 
