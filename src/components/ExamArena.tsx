@@ -59,22 +59,7 @@ const ExamArena: React.FC<ExamArenaProps> = ({ initialTopic, onClearTopic }) => 
     setQuiz([]);
 
     try {
-      let questions: QuizQuestion[] = [];
-      if (navigator.onLine) {
-        questions = await generateQuiz(topicStr, 'Medium');
-      } else {
-        const { offlineAIService } = await import('../services/offlineAiService');
-        const prompt = `Generate 5 challenging multiple choice questions for the topic: ${topicStr}. Provide response in this exact JSON format: [{"id": 1, "question": "...", "options": ["A", "B", "C", "D"], "correctAnswerIndex": 0, "explanation": "..."}]`;
-        const response = await offlineAIService.generateResponse([
-          { role: 'system', content: 'You are a quiz master. Create challenging educational quizzes. Output ONLY valid JSON.' },
-          { role: 'user', content: prompt }
-        ]);
-        
-        // Robust JSON parsing
-        const jsonMatch = response.match(/\[.*\]/s);
-        const jsonStr = jsonMatch ? jsonMatch[0] : response;
-        questions = JSON.parse(jsonStr);
-      }
+      const questions = await generateQuiz(topicStr, 'Medium');
 
       if (questions && questions.length > 0) {
         setQuiz(questions);
@@ -205,9 +190,8 @@ const ExamArena: React.FC<ExamArenaProps> = ({ initialTopic, onClearTopic }) => 
             <div className="bg-indigo-50 border border-indigo-100 p-3 rounded-lg flex items-center justify-between text-indigo-700 text-sm animate-pulse">
               <div className="flex items-center gap-3">
                 <Loader2 className="animate-spin" size={16} />
-                Updating quiz content in real-time...
+                AI is generating fresh quiz content...
               </div>
-              <span className="text-[10px] font-bold bg-indigo-200 px-2 py-0.5 rounded uppercase">On-Device Processing</span>
             </div>
           )}
 

@@ -141,7 +141,7 @@ const CustomerSupport: React.FC<CustomerSupportProps> = ({ user, isTeacherAuthen
 
   const faqs = [
     { q: "How do I reset my password?", a: "Go to Profile Settings > Security > Change Password. If you are logged out, click 'Forgot Password' on the login screen." },
-    { q: "Is the content available offline?", a: "Currently, you need an active internet connection to access the AI Coach and Exams. We are working on an offline mode!" },
+    { q: "Is the content available offline?", a: "Currently, you need an active internet connection to access the AI Coach and Exams. We focus on providing the most up-to-date and powerful Cloud AI experience!" },
     { q: "How is my Originality Score calculated?", a: "We use Gemini AI to analyze your text patterns against common AI-generated structures and known databases." },
     { q: "Can I upgrade my plan?", a: "Yes! Navigate to Settings > Subscription to view our Premium plans for unlimited AI queries." },
   ];

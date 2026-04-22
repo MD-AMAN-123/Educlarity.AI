@@ -14,7 +14,7 @@ const ConceptCoach: React.FC<ConceptCoachProps> = ({ initialTopic, onClearTopic 
     {
       id: 'welcome',
       role: 'model',
-      text: 'Hello! I am EduClarity. I am here to tutor you even without internet. What should we learn today?',
+      text: 'Hello! I am EduClarity. I am your personalized AI tutor. What should we learn today?',
       timestamp: Date.now()
     }
   ]);
@@ -44,8 +44,7 @@ const ConceptCoach: React.FC<ConceptCoachProps> = ({ initialTopic, onClearTopic 
     }
   }, [initialTopic]);
 
-  const [modelLoadingProgress, setModelLoadingProgress] = useState(0);
-  const [isModelLoading, setIsModelLoading] = useState(false);
+
 
   const handleSendMessage = async (text: string, audioBase64?: string) => {
     if (!text && !audioBase64) return;
@@ -69,7 +68,7 @@ const ConceptCoach: React.FC<ConceptCoachProps> = ({ initialTopic, onClearTopic 
         language,
         audioBase64
       );
-      
+
       const aiMsg: ChatMessage = {
         id: (Date.now() + 1).toString(),
         role: 'model',
@@ -83,12 +82,10 @@ const ConceptCoach: React.FC<ConceptCoachProps> = ({ initialTopic, onClearTopic 
 
     } catch (error: any) {
       console.error(error);
-      setIsModelLoading(false); // Stop loading on error
-      
+
+
       let errorText = "I'm having some trouble connecting to my brain. Please try again in a moment.";
-      if (error.message === "WEBGPU_NOT_SUPPORTED") {
-        errorText = "Your device doesn't support offline AI (WebGPU missing). Please use Online Mode instead.";
-      }
+
 
       const errorMsg: ChatMessage = {
         id: Date.now().toString(),
@@ -202,7 +199,7 @@ const ConceptCoach: React.FC<ConceptCoachProps> = ({ initialTopic, onClearTopic 
             <Globe className="w-5 h-5 text-indigo-500" />
             EduClarity AI Tutor
           </h2>
-            <p className="text-xs text-slate-500 dark:text-slate-400">Personalized learning in {language}</p>
+          <p className="text-xs text-slate-500 dark:text-slate-400">Personalized learning in {language}</p>
         </div>
 
         <div className="flex gap-2 text-sm">
@@ -274,36 +271,19 @@ const ConceptCoach: React.FC<ConceptCoachProps> = ({ initialTopic, onClearTopic 
             )}
           </div>
         ))}
-        {(isModelLoading || isProcessing) && (
+        {isProcessing && (
           <div className="flex justify-start">
             <div className="bg-white dark:bg-slate-800 p-4 rounded-3xl rounded-bl-none shadow-md border dark:border-slate-700 flex items-center gap-4 max-w-sm">
               <div className="relative">
                 <Loader2 className={`animate-spin text-indigo-500`} size={24} />
-                {isModelLoading && (
-                   <div className="absolute inset-0 flex items-center justify-center text-[8px] font-bold">
-                    {modelLoadingProgress}%
-                   </div>
-                )}
               </div>
               <div className="flex flex-col">
                 <span className="font-bold text-slate-800 dark:text-slate-100 text-sm">
-                  {isModelLoading ? "Downloading AI Brain..." : "EduClarity is thinking..."}
+                  EduClarity is thinking...
                 </span>
                 <span className="text-[10px] text-slate-500 dark:text-slate-400">
-                  {isModelLoading ? `${modelLoadingProgress}% cached on-device` : "On-device neural processing"}
+                  Neural processing in progress...
                 </span>
-                {isModelLoading && modelLoadingProgress === 0 && (
-                  <button 
-                    onClick={() => {
-                        setIsModelLoading(false);
-                        setIsProcessing(false);
-                        alert("Taking too long? Please check your internet or try Online Mode.");
-                    }}
-                    className="mt-1 text-[8px] text-indigo-500 font-bold uppercase hover:underline text-left"
-                  >
-                    Click to cancel stay online
-                  </button>
-                )}
               </div>
             </div>
           </div>
