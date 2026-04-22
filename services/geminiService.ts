@@ -26,6 +26,8 @@ if (localKey && localKey.length > 10) {
   }
 }
 
+const MODEL_PRIORITY = ["gemini-pro", "gemini-1.5-flash", "gemini-1.5-flash-latest"];
+
 /* ===============================
    SECURE BACKEND PROXY
 ================================ */
@@ -106,35 +108,26 @@ async function generateCoachResponse(
       history: formattedHistory,
       message: currentMessage
     });
-
     return { text: data.text };
   } catch (err: any) {
-    // FALLBACK TO LOCAL IF BACKEND FAILS (For Local Dev)
+    // FALLBACK TO LOCAL IF BACKEND FAILS
     if (localGenAI) {
-      try {
-        // Try multiple model variants for robustness
-        const modelNames = ["gemini-1.5-flash", "gemini-1.5-flash-latest", "gemini-pro"];
-        let model = null;
-
-        for (const name of modelNames) {
-          try {
-            model = localGenAI.getGenerativeModel({ model: name });
-            if (model) break;
-          } catch (e) {
-            continue;
+      for (const modelName of MODEL_PRIORITY) {
+        try {
+          const model = localGenAI.getGenerativeModel({ model: modelName });
+          const chat = model.startChat({ history: formattedHistory });
+          const result = await chat.sendMessage(currentMessage);
+          return { text: result.response.text() };
+        } catch (fallbackErr: any) {
+          console.warn(`Local model ${modelName} failed:`, fallbackErr);
+          if (modelName === MODEL_PRIORITY[MODEL_PRIORITY.length - 1]) {
+            return { text: `Local Error: All models failed. ${fallbackErr.message}` };
           }
+          continue;
         }
-
-        if (!model) throw new Error("No compatible Gemini models found.");
-
-        const chat = model.startChat({ history: formattedHistory });
-        const result = await chat.sendMessage(currentMessage);
-        return { text: result.response.text() };
-      } catch (fallbackErr: any) {
-        return { text: `Local Fallback Error: ${fallbackErr.message}` };
       }
     }
-    return { text: `Connectivity Error: ${err.message}. Please check Vercel Environment Variables.` };
+    return { text: `Connectivity Error: ${err.message}` };
   }
 }
 
@@ -156,9 +149,7 @@ async function generateSupportResponse(
       ? students.map(s => `- ${s.name} (ID: ${s.id}, Grade: ${s.grade})`).join('\n')
       : "No students listed.";
 
-    const systemPrompt = `You are the EduClarity Support Bot.
-      Student Data: ${studentList}
-      Tasks: Help manage students. Respond to ADD or REMOVE requests with ACTION_ADD:{json} or ACTION_REMOVE:name.`;
+    const systemPrompt = `You are the EduClarity Support Bot. Student Data: ${studentList}`;
 
     const formattedHistory = [
       { role: "user", parts: [{ text: systemPrompt }] },
@@ -174,24 +165,7 @@ async function generateSupportResponse(
       message: message
     });
 
-    let text = data.text;
-
-    if (text.startsWith("ACTION_ADD:") && actions?.addStudent) {
-      try {
-        const jsonStr = text.replace("ACTION_ADD:", "").trim();
-        const studentData = JSON.parse(jsonStr);
-        return await actions.addStudent(studentData);
-      } catch {
-        return "Student data error.";
-      }
-    }
-
-    if (text.startsWith("ACTION_REMOVE:") && actions?.removeStudent) {
-      const name = text.replace("ACTION_REMOVE:", "").trim();
-      return await actions.removeStudent(name);
-    }
-
-    return text;
+    return data.text;
   } catch {
     return "Support unavailable.";
   }
@@ -204,12 +178,8 @@ async function generateSupportResponse(
 async function generateLearningPath(
   subject: string
 ): Promise<LearningNode[]> {
-  const prompt = `Create an 8-milestone roadmap for "${subject}" as JSON array. 
-    Fields: id, title, description, status (LOCKED/IN_PROGRESS), difficulty, rationale.`;
-
-  const fallbackPath: LearningNode[] = [
-    { id: '1', title: `Basics of ${subject}`, description: 'Fundamentals.', status: 'IN_PROGRESS', difficulty: 'Beginner', rationale: 'Foundation.' }
-  ];
+  const prompt = `Create an 8-milestone roadmap for "${subject}" as JSON array.`;
+  const fallbackPath: LearningNode[] = [{ id: '1', title: `Basics of ${subject}`, description: 'Fundamentals.', status: 'IN_PROGRESS', difficulty: 'Beginner', rationale: 'Foundation.' }];
 
   try {
     const data = await callAIBackend('roadmap', { prompt });
@@ -228,9 +198,7 @@ async function generateQuiz(
   topic: string,
   difficulty: string
 ): Promise<QuizQuestion[]> {
-  const prompt = `Generate a 5-question multiple choice quiz about "${topic}" (difficulty: ${difficulty}). 
-    Return as a JSON array.`;
-
+  const prompt = `Generate a 5-question multiple choice quiz about "${topic}" (difficulty: ${difficulty}). Return JSON array.`;
   try {
     const data = await callAIBackend('quiz', { prompt });
     return safeParse<QuizQuestion[]>(data.text, []);
@@ -248,7 +216,7 @@ async function solveQuestionFromImage(
 ): Promise<{ topic: string, answer: string, steps: string[] }> {
   const fallback = { topic: "Analysis", answer: "Failed to solve.", steps: ["Try again."] };
   try {
-    const prompt = `Solve this question from the image. Return JSON: {topic, answer, steps[]}`;
+    const prompt = `Solve this question from image. Return JSON: {topic, answer, steps[]}`;
     const data = await callAIBackend('vision', { prompt, image: base64Image });
     return safeParse(data.text, fallback);
   } catch {
@@ -257,76 +225,39 @@ async function solveQuestionFromImage(
 }
 
 /* ===============================
-   TEACHER INSIGHTS
+   DASHBOARD & TEACHER INSIGHTS
 ================================ */
 
-async function generateTeacherInsights(
-  dataStr: string
-): Promise<TeacherInsight[]> {
-  const prompt = `Analyze: ${dataStr}. Return 3 insights as JSON array {topic, avgScore, difficultyLevel, recommendation}.`;
+async function generateTeacherInsights(dataStr: string): Promise<TeacherInsight[]> {
   try {
-    const data = await callAIBackend('insights', { prompt });
+    const data = await callAIBackend('insights', { prompt: `Analyze: ${dataStr}` });
     return safeParse<TeacherInsight[]>(data.text, []);
-  } catch {
-    return [];
-  }
+  } catch { return []; }
 }
 
-/* ===============================
-   ASSIGNMENT
-================================ */
-
-async function generateAssignment(
-  topic: string,
-  difficulty: string
-): Promise<Assignment | null> {
-  const prompt = `Create an assignment for ${topic} (${difficulty}). JSON: {title, tasks[], deadline}.`;
+async function generateDashboardInsights(userName: string, stats: DashboardStats): Promise<AIInsight[]> {
   try {
-    const data = await callAIBackend('assignment', { prompt });
-    return safeParse<Assignment>(data.text, null);
-  } catch {
-    return null;
-  }
-}
-
-/* ===============================
-   DASHBOARD INSIGHTS
-================================ */
-
-async function generateDashboardInsights(
-  userName: string,
-  stats: DashboardStats
-): Promise<AIInsight[]> {
-  const prompt = `Generate 3 insights for ${userName}: ${JSON.stringify(stats)}. JSON array {title, description, type}.`;
-  try {
-    const data = await callAIBackend('insights', { prompt });
+    const data = await callAIBackend('insights', { prompt: `Insights for ${userName}: ${JSON.stringify(stats)}` });
     return safeParse<AIInsight[]>(data.text, []);
-  } catch {
-    return [{ title: "Welcome!", description: "Start learning to see insights.", type: "info" }];
-  }
+  } catch { return []; }
 }
 
-async function generateVisualAid(
-  topic: string
-): Promise<string | undefined> {
+/* ===============================
+   UTILITIES
+================================ */
+
+async function generateVisualAid(topic: string): Promise<string | undefined> {
   try {
-    const data = await callAIBackend('visual', { prompt: `Explain ${topic} with a conceptual breakdown.` });
+    const data = await callAIBackend('visual', { prompt: `Explain ${topic}` });
     return data.text;
-  } catch {
-    return undefined;
-  }
+  } catch { return undefined; }
 }
 
-async function checkOriginality(
-  submission: string
-): Promise<{ score: number, analysis: string }> {
-  const prompt = `Check for plagiarism/originality in: "${submission}". JSON: {score, analysis}.`;
+async function checkOriginality(submission: string): Promise<{ score: number, analysis: string }> {
   try {
-    const data = await callAIBackend('originality', { prompt });
-    return safeParse(data.text, { score: 0, analysis: "Failed to analyze." });
-  } catch {
-    return { score: 0, analysis: "Error checking originality." };
-  }
+    const data = await callAIBackend('originality', { prompt: `Check: ${submission}` });
+    return safeParse(data.text, { score: 0, analysis: "Error." });
+  } catch { return { score: 0, analysis: "Error." }; }
 }
 
 function blobToBase64(blob: Blob): Promise<string> {
@@ -345,7 +276,6 @@ export {
   generateQuiz,
   solveQuestionFromImage,
   generateTeacherInsights,
-  generateAssignment,
   generateDashboardInsights,
   generateVisualAid,
   checkOriginality,
