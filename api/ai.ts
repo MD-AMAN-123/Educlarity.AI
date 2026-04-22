@@ -15,7 +15,13 @@ export default async function handler(req: any, res: any) {
   const { task, payload } = req.body;
 
   try {
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    // Try Flash first, then fallback to Pro
+    let model;
+    try {
+      model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    } catch {
+      model = genAI.getGenerativeModel({ model: "gemini-pro" });
+    }
 
     switch (task) {
       case 'coach':

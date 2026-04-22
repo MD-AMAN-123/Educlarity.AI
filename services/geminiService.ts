@@ -112,7 +112,21 @@ async function generateCoachResponse(
     // FALLBACK TO LOCAL IF BACKEND FAILS (For Local Dev)
     if (localGenAI) {
       try {
-        const model = localGenAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+        // Try multiple model variants for robustness
+        const modelNames = ["gemini-1.5-flash", "gemini-1.5-flash-latest", "gemini-pro"];
+        let model = null;
+
+        for (const name of modelNames) {
+          try {
+            model = localGenAI.getGenerativeModel({ model: name });
+            if (model) break;
+          } catch (e) {
+            continue;
+          }
+        }
+
+        if (!model) throw new Error("No compatible Gemini models found.");
+
         const chat = model.startChat({ history: formattedHistory });
         const result = await chat.sendMessage(currentMessage);
         return { text: result.response.text() };
