@@ -16,7 +16,15 @@ import {
    SAFE ENV (For Local Fallback)
 ================================ */
 
-const localKey = (import.meta.env.VITE_GEMINI_API_KEY || "").trim();
+const getLocalKey = () => {
+  try {
+    return (import.meta.env.VITE_GEMINI_API_KEY || "").trim();
+  } catch {
+    return "";
+  }
+};
+
+const localKey = getLocalKey();
 let localGenAI: any = null;
 if (localKey && localKey.length > 10) {
   try {
