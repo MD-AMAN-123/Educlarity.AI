@@ -58,7 +58,7 @@ const App: React.FC = () => {
   useEffect(() => {
     // Only save if initial load is complete to prevent overwriting with empty array
     if (isDataLoaded) {
-      localStorage.setItem('edufree_students', JSON.stringify(students));
+      localStorage.setItem('educlarity_students', JSON.stringify(students));
     }
   }, [students, isDataLoaded]);
 

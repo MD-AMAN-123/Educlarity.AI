@@ -119,7 +119,7 @@ const ExamArena: React.FC<ExamArenaProps> = ({ initialTopic, onClearTopic }) => 
 
       <div className="bg-white p-6 rounded-xl border shadow-sm">
         <h2 className="text-2xl font-bold text-slate-800 mb-1 flex items-center gap-2">
-          <BookOpen className="text-indigo-600" /> EduFree Adaptive Quizzes
+          <BookOpen className="text-indigo-600" /> EduClarity Adaptive Quizzes
         </h2>
         <p className="text-xs text-slate-500 mb-4">Difficulty adjusts based on your performance in real-time.</p>
         <div className="flex flex-col sm:flex-row gap-4">
@@ -182,7 +182,7 @@ const ExamArena: React.FC<ExamArenaProps> = ({ initialTopic, onClearTopic }) => 
           <div className="relative flex flex-col items-center">
             <Loader2 className="animate-spin text-indigo-600 mb-6" size={60} />
             <h3 className="text-xl font-bold text-slate-800 dark:text-white">Curating Your Assessment</h3>
-            <p className="text-slate-500 dark:text-slate-400 mt-2">EduFree AI is synthesizing questions for "{topic}"</p>
+            <p className="text-slate-500 dark:text-slate-400 mt-2">EduClarity AI is synthesizing questions for "{topic}"</p>
             <div className="mt-8 flex gap-2">
               <div className="w-2 h-2 bg-indigo-400 rounded-full animate-bounce"></div>
               <div className="w-2 h-2 bg-indigo-500 rounded-full animate-bounce delay-100"></div>

@@ -13,7 +13,7 @@ const ConceptCoach: React.FC<ConceptCoachProps> = ({ initialTopic, onClearTopic 
     {
       id: 'welcome',
       role: 'model',
-      text: 'Hello! I am EduFree. I am here to tutor you even without internet. What should we learn today?',
+      text: 'Hello! I am EduClarity. I am here to tutor you even without internet. What should we learn today?',
       timestamp: Date.now()
     }
   ]);
@@ -254,7 +254,7 @@ const ConceptCoach: React.FC<ConceptCoachProps> = ({ initialTopic, onClearTopic 
         <div>
           <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
             <Globe className="w-5 h-5 text-indigo-500" />
-            EduFree Offline Tutor
+            EduClarity Offline Tutor
           </h2>
           <div className="flex items-center gap-2 mt-0.5">
             <p className="text-xs text-slate-500 dark:text-slate-400">Personalized learning in {language}</p>
@@ -344,7 +344,7 @@ const ConceptCoach: React.FC<ConceptCoachProps> = ({ initialTopic, onClearTopic 
               </div>
               <div className="flex flex-col">
                 <span className="font-bold text-slate-800 dark:text-slate-100 text-sm">
-                  {isModelLoading ? "Downloading AI Brain..." : "EduFree is thinking..."}
+                  {isModelLoading ? "Downloading AI Brain..." : "EduClarity is thinking..."}
                 </span>
                 <span className="text-[10px] text-slate-500 dark:text-slate-400">
                   {isModelLoading ? `${modelLoadingProgress}% cached on-device` : "On-device neural processing"}
@@ -408,7 +408,7 @@ const ConceptCoach: React.FC<ConceptCoachProps> = ({ initialTopic, onClearTopic 
           </button>
         </div>
         <p className="text-center text-[10px] text-slate-400 dark:text-slate-500 mt-2">
-          AI can make mistakes. EduFree works entirely on-device for your privacy and accessibility. Hindi, English & regional nuances supported.
+          AI can make mistakes. EduClarity works entirely on-device for your privacy and accessibility. Hindi, English & regional nuances supported.
         </p>
       </div>
     </div>

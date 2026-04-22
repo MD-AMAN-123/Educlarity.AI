@@ -1,10 +1,10 @@
-🚀 **EduFree.AI — The Future of Learning, Without Limits**
+🚀 **EduClarity.AI — The Future of Learning, Without Limits**
 
 Imagine a world where education is not restricted by internet access, geography, or resources.
-Introducing **EduFree.AI** — a revolutionary **offline-first, AI-powered learning ecosystem** designed to bring personalized, intelligent education to every student, anywhere.
+Introducing **EduClarity.AI** — a revolutionary **offline-first, AI-powered learning ecosystem** designed to bring personalized, intelligent education to every student, anywhere.
 
 💡 **What makes it powerful?**
-EduFree.AI runs entirely on-device using lightweight AI models, transforming any smartphone into a **smart personal tutor** — even in the most remote areas.
+EduClarity.AI runs entirely on-device using lightweight AI models, transforming any smartphone into a **smart personal tutor** — even in the most remote areas.
 
 🧠 **Core Capabilities:**
 
@@ -23,7 +23,7 @@ EduFree.AI runs entirely on-device using lightweight AI models, transforming any
 * Syncs data when connectivity is available
 
 🌍 **Why it matters?**
-Millions of students are left behind due to poor internet access. EduFree.AI bridges this gap by delivering **equitable, AI-driven education** — anytime, anywhere.
+Millions of students are left behind due to poor internet access. EduClarity.AI bridges this gap by delivering **equitable, AI-driven education** — anytime, anywhere.
 
 🏆 **Our Vision:**
 To democratize learning by turning every device into a **self-powered AI classroom**, ensuring no student is left behind in the digital era.
@@ -44,10 +44,10 @@ To democratize learning by turning every device into a **self-powered AI classro
 
 ```bash
 # Clone repository
-git clone https://github.com/your-username/edufree-ai.git
+git clone https://github.com/your-username/educlarity-ai.git
 
 # Navigate into folder
-cd edufree-ai
+cd educlarity-ai
 
 # Install dependencies
 npm install

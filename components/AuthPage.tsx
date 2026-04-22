@@ -92,7 +92,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ onLogin }) => {
               <BrainCircuit className="text-white w-24 h-24" />
             </div>
             <h1 className="text-6xl font-black text-white tracking-tighter mb-4">
-              EduFree<span className="text-indigo-400">.AI</span>
+              EduClarity<span className="text-indigo-400">.AI</span>
             </h1>
             <p className="text-indigo-200/60 text-xl font-medium tracking-[0.3em] uppercase">
               Learn Anytime. Anywhere. Even Offline.
@@ -119,7 +119,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ onLogin }) => {
             <div className="mb-10 block md:hidden">
               <div className="flex items-center gap-2 mb-6">
                 <BrainCircuit className="text-indigo-500 w-8 h-8" />
-                <span className="text-xl font-bold text-white">EduFree.AI</span>
+                <span className="text-xl font-bold text-white">EduClarity.AI</span>
               </div>
             </div>
 

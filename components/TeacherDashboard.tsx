@@ -270,7 +270,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ user, isAuthenticat
           </form>
           
           <div className="mt-8 text-center">
-             <p className="text-[10px] text-slate-400 dark:text-slate-600 font-bold uppercase tracking-widest">© 2024 EDUFREE.AI • SECURED ENVIRONMENT</p>
+             <p className="text-[10px] text-slate-400 dark:text-slate-600 font-bold uppercase tracking-widest">© 2024 EDUCLARITY.AI • SECURED ENVIRONMENT</p>
           </div>
         </div>
       </div>

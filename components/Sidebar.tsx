@@ -49,7 +49,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onChangeView, isMobileMe
       {/* Mobile Header */}
       <div className="md:hidden fixed top-0 left-0 right-0 h-16 bg-white dark:bg-slate-900 border-b dark:border-slate-800 z-50 flex items-center justify-between px-4">
         <div className="flex items-center gap-2">
-           <span className="text-xl font-bold text-indigo-600 dark:text-indigo-400">EduFree<span className="text-orange-500">.AI</span></span>
+           <span className="text-xl font-bold text-indigo-600 dark:text-indigo-400">EduClarity<span className="text-orange-500">.AI</span></span>
         </div>
         <div className="flex items-center gap-3">
           <button 

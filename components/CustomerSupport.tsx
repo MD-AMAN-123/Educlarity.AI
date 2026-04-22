@@ -21,7 +21,7 @@ const CustomerSupport: React.FC<CustomerSupportProps> = ({ user, isTeacherAuthen
       role: 'model',
       text: isTeacherAuthenticated 
         ? 'Welcome, Teacher! I can help you manage your class. You can ask me to "Add a new student called Rahul with Grade A" or "Delete Arjun Verma".'
-        : 'Hi there! I am the EduFree Support Bot. How can I help you with your account or studies today?',
+        : 'Hi there! I am the EduClarity Support Bot. How can I help you with your account or studies today?',
       timestamp: Date.now()
     }
   ]);
@@ -211,7 +211,7 @@ const CustomerSupport: React.FC<CustomerSupportProps> = ({ user, isTeacherAuthen
                    <div className="p-2 bg-indigo-50 dark:bg-indigo-900/30 rounded-lg text-indigo-600 dark:text-indigo-400"><Mail size={20} /></div>
                    <div>
                       <p className="text-xs text-slate-400 uppercase font-bold">Email Us</p>
-                      <p className="font-medium">support@edufree.ai</p>
+                      <p className="font-medium">support@educlarity.ai</p>
                    </div>
                 </div>
                 <div className="flex items-center gap-3 text-slate-600 dark:text-slate-300">

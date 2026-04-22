@@ -106,12 +106,12 @@ async function generateCoachResponse(
 ): Promise<{ text: string }> {
 
   if (!apiKey || apiKey.length < 10) {
-    return { text: "EduFree Error: API Key missing. Please check .env.local." };
+    return { text: "EduClarity Error: API Key missing. Please check .env.local." };
   }
 
   const systemPrompt = bot 
     ? `You are "${bot.name}", specializing in ${bot.subject}. Personality: ${bot.personality}. Respond in ${language}.`
-    : `You are "EduFree AI", a conceptual coach. Mode: ${mode}. Language: ${language}. Use the Socratic method.`;
+    : `You are "EduClarity AI", a conceptual coach. Mode: ${mode}. Language: ${language}. Use the Socratic method.`;
 
   const contents = [
     {
@@ -182,7 +182,7 @@ async function generateSupportResponse(
       ? students.map(s => `- ${s.name} (ID: ${s.id}, Grade: ${s.grade})`).join('\n')
       : "No students listed.";
 
-    const systemPrompt = `You are the EduFree Support Bot.
+    const systemPrompt = `You are the EduClarity Support Bot.
 Current Student Data:
 ${studentList}
 

@@ -34,7 +34,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, stats, onNavigate }) => {
               </div>
               <div className="flex flex-col">
                 <span className="text-xl font-bold tracking-tight leading-none">
-                  EduFree<span className="text-purple-300">.AI</span>
+                  EduClarity<span className="text-purple-300">.AI</span>
                 </span>
                 <span className="text-[10px] text-indigo-200 uppercase tracking-widest font-semibold mt-0.5">
                   Learn Anytime. Anywhere. Even Offline.

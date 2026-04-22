@@ -22,7 +22,7 @@ const EcoTracker: React.FC = () => {
             <Leaf className="text-green-400" /> Eco Impact Tracker
           </h1>
           <p className="text-green-200 mt-2 max-w-xl">
-            By using digital exams and AI tutors, EduFree.AI helps reduce paper waste. 
+            By using digital exams and AI tutors, EduClarity.AI helps reduce paper waste. 
             Here is your contribution to a greener India.
           </p>
         </div>
