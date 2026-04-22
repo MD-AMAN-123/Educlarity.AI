@@ -64,7 +64,7 @@ async function callAIBackend(task: string, payload: any): Promise<any> {
    JSON SAFE PARSER
 ================================ */
 
-function safeParse<T>(text: string | undefined, fallback: T): T {
+export function safeParse<T>(text: string | undefined, fallback: T): T {
   if (!text) return fallback;
   try {
     const firstBracket = text.indexOf('[');
@@ -90,7 +90,7 @@ function safeParse<T>(text: string | undefined, fallback: T): T {
    COACH
 ================================ */
 
-async function generateCoachResponse(
+export async function generateCoachResponse(
   history: { role: string; text: string }[],
   currentMessage: string,
   mode: CoachMode,
@@ -143,7 +143,7 @@ async function generateCoachResponse(
    SUPPORT
 ================================ */
 
-async function generateSupportResponse(
+export async function generateSupportResponse(
   history: { role: string; text: string }[],
   message: string,
   students?: Student[],
@@ -183,7 +183,7 @@ async function generateSupportResponse(
    LEARNING PATH
 ================================ */
 
-async function generateLearningPath(
+export async function generateLearningPath(
   subject: string
 ): Promise<LearningNode[]> {
   const prompt = `Create an 8-milestone roadmap for "${subject}" as JSON array.`;
@@ -202,7 +202,7 @@ async function generateLearningPath(
    QUIZ
 ================================ */
 
-async function generateQuiz(
+export async function generateQuiz(
   topic: string,
   difficulty: string
 ): Promise<QuizQuestion[]> {
@@ -219,7 +219,7 @@ async function generateQuiz(
    DOUBT SOLVER (VISION)
 ================================ */
 
-async function solveQuestionFromImage(
+export async function solveQuestionFromImage(
   base64Image: string
 ): Promise<{ topic: string, answer: string, steps: string[] }> {
   const fallback = { topic: "Analysis", answer: "Failed to solve.", steps: ["Try again."] };
@@ -236,14 +236,14 @@ async function solveQuestionFromImage(
    DASHBOARD & TEACHER INSIGHTS
 ================================ */
 
-async function generateTeacherInsights(dataStr: string): Promise<TeacherInsight[]> {
+export async function generateTeacherInsights(dataStr: string): Promise<TeacherInsight[]> {
   try {
     const data = await callAIBackend('insights', { prompt: `Analyze: ${dataStr}` });
     return safeParse<TeacherInsight[]>(data.text, []);
   } catch { return []; }
 }
 
-async function generateDashboardInsights(userName: string, stats: DashboardStats): Promise<AIInsight[]> {
+export async function generateDashboardInsights(userName: string, stats: DashboardStats): Promise<AIInsight[]> {
   try {
     const data = await callAIBackend('insights', { prompt: `Insights for ${userName}: ${JSON.stringify(stats)}` });
     return safeParse<AIInsight[]>(data.text, []);
@@ -254,21 +254,21 @@ async function generateDashboardInsights(userName: string, stats: DashboardStats
    UTILITIES
 ================================ */
 
-async function generateVisualAid(topic: string): Promise<string | undefined> {
+export async function generateVisualAid(topic: string): Promise<string | undefined> {
   try {
     const data = await callAIBackend('visual', { prompt: `Explain ${topic}` });
     return data.text;
   } catch { return undefined; }
 }
 
-async function checkOriginality(submission: string): Promise<{ score: number, analysis: string }> {
+export async function checkOriginality(submission: string): Promise<{ score: number, analysis: string }> {
   try {
     const data = await callAIBackend('originality', { prompt: `Check: ${submission}` });
     return safeParse(data.text, { score: 0, analysis: "Error." });
   } catch { return { score: 0, analysis: "Error." }; }
 }
 
-function blobToBase64(blob: Blob): Promise<string> {
+export function blobToBase64(blob: Blob): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onloadend = () => resolve((reader.result as string).split(",")[1]);
@@ -277,16 +277,4 @@ function blobToBase64(blob: Blob): Promise<string> {
   });
 }
 
-export {
-  generateCoachResponse,
-  generateSupportResponse,
-  generateLearningPath,
-  generateQuiz,
-  solveQuestionFromImage,
-  generateTeacherInsights,
-  generateDashboardInsights,
-  generateVisualAid,
-  checkOriginality,
-  blobToBase64,
-  safeParse
-};
+

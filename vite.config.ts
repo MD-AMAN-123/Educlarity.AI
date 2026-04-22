@@ -1,24 +1,28 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
+import path from 'path';
 
-// https://vitejs.dev/config/
+// Stable Vite 5 Configuration
 export default defineConfig({
   plugins: [react()],
+  resolve: {
+    alias: {
+      '@': path.resolve(__dirname, './src'),
+    },
+  },
   build: {
     outDir: 'dist',
+    commonjsOptions: {
+      transformMixedEsModules: true, // Helps with library compatibility
+    },
     rollupOptions: {
       external: ['express', 'cors', 'dotenv'],
       output: {
-        manualChunks: undefined, // Let Vite handle chunking to avoid Identifier errors
+        manualChunks: undefined,
       },
-    }
+    },
   },
   optimizeDeps: {
     exclude: ['express', 'cors', 'dotenv']
-  },
-  resolve: {
-    alias: {
-      '@': '/src',
-    },
   }
 });
