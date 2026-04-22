@@ -1,5 +1,5 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import {
+import type {
   CoachMode,
   Language,
   QuizQuestion,
@@ -122,8 +122,8 @@ async function generateCoachResponse(
     if (localGenAI) {
       for (const modelName of MODEL_PRIORITY) {
         try {
-          const model = localGenAI.getGenerativeModel({ model: modelName });
-          const chat = model.startChat({ history: formattedHistory });
+          const aiModel = localGenAI.getGenerativeModel({ model: modelName });
+          const chat = aiModel.startChat({ history: formattedHistory });
           const result = await chat.sendMessage(currentMessage);
           return { text: result.response.text() };
         } catch (fallbackErr: any) {
