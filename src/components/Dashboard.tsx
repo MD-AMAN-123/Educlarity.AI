@@ -1,6 +1,6 @@
 import React from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip } from 'recharts';
-import { CheckCircle, Clock, Award, AlertTriangle, Globe, Sparkles, BrainCircuit, Zap, Camera, Flame, Trophy, Target } from 'lucide-react';
+import { CheckCircle, Clock, Award, AlertTriangle, Globe, Sparkles, BrainCircuit, Zap, Camera, Flame, Trophy, Target } from '../icons';
 import { AppView } from '../types';
 import type { User, DashboardStats } from '../types';
 

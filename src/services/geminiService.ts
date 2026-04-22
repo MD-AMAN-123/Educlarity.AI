@@ -34,7 +34,7 @@ if (localKey && localKey.length > 10) {
   }
 }
 
-const MODEL_PRIORITY = ["gemini-pro", "gemini-1.5-flash", "gemini-1.5-flash-latest"];
+const MODEL_PRIORITY = ["gemini-1.5-flash", "gemini-1.5-flash-latest"];
 
 /* ===============================
    SECURE BACKEND PROXY
@@ -277,4 +277,22 @@ export function blobToBase64(blob: Blob): Promise<string> {
   });
 }
 
+export async function generateAssignment(topic: string): Promise<Assignment | null> {
+  const prompt = `Create a detailed assignment for students on the topic: "${topic}".
+Return a JSON object with this exact structure:
+{
+  "title": "Assignment title",
+  "deadline": "Due in 1 week",
+  "tasks": ["Task 1 description", "Task 2 description", "Task 3 description", "Task 4 description"]
+}
+Return ONLY valid JSON, no markdown or code blocks.`;
+
+  try {
+    const data = await callAIBackend('assignment', { prompt });
+    return safeParse<Assignment>(data.text, null as unknown as Assignment);
+  } catch (err) {
+    console.error("generateAssignment error:", err);
+    return null;
+  }
+}
 

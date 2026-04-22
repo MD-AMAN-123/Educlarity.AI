@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Bot, Sparkles, Save, User, ArrowLeft, Send, Trash2, MessageCircle } from 'lucide-react';
+import { Bot, Sparkles, Save, User, ArrowLeft, Send, Trash2, MessageCircle } from '../icons';
 import { StudyBot, ChatMessage, CoachMode, Language } from '../types';
 import { generateCoachResponse } from '../services/geminiService';
 

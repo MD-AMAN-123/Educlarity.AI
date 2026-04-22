@@ -1,6 +1,6 @@
 import React from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts';
-import { TrendingUp, Award, Target, Zap, BookOpen, ChevronRight, Activity, Sparkles, Clock } from 'lucide-react';
+import { TrendingUp, Award, Target, Zap, BookOpen, ChevronRight, Activity, Sparkles, Clock } from '../icons';
 import { DashboardStats } from '../types';
 
 interface SmartAnalyticsProps {

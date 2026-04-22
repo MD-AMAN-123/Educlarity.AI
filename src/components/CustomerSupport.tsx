@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { LifeBuoy, MessageSquare, Mail, Phone, ChevronDown, ChevronUp, Send, Loader2, CheckCircle, FileText } from 'lucide-react';
+import { LifeBuoy, MessageSquare, Mail, Phone, ChevronDown, ChevronUp, Send, Loader2, CheckCircle, FileText } from '../icons';
 import { generateSupportResponse } from '../services/geminiService';
 import type { ChatMessage, Student, User } from '../types';
 import { addStudent, removeStudent } from '../services/studentService';

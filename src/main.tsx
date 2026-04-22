@@ -8,8 +8,8 @@ if (!rootElement) {
   console.error("Critical Error: #root element not found in index.html");
 } else {
   try {
-    const root = ReactDOM.createRoot(rootElement);
-    root.render(
+    const appRoot = ReactDOM.createRoot(rootElement);
+    appRoot.render(
       <React.StrictMode>
         <App />
       </React.StrictMode>

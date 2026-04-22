@@ -12,17 +12,11 @@ export default defineConfig({
   },
   build: {
     outDir: 'dist',
-    commonjsOptions: {
-      transformMixedEsModules: true, // Helps with library compatibility
-    },
+    cssCodeSplit: false, // Prevents CSS chunking issues
     rollupOptions: {
-      external: ['express', 'cors', 'dotenv'],
       output: {
-        manualChunks: undefined,
+        manualChunks: () => 'app.js', // Forces everything into one stable bundle
       },
     },
   },
-  optimizeDeps: {
-    exclude: ['express', 'cors', 'dotenv']
-  }
 });

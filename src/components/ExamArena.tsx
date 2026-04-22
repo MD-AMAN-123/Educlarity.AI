@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { generateQuiz, checkOriginality } from '../services/geminiService';
 import { QuizQuestion } from '../types';
-import { Loader2, Check, X, AlertTriangle, BookOpen, Sparkles } from 'lucide-react';
+import { Loader2, Check, X, AlertTriangle, BookOpen, Sparkles } from '../icons';
 
 interface ExamArenaProps {
   initialTopic?: string;

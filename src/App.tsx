@@ -13,7 +13,7 @@ import DoubtSolver from './components/DoubtSolver';
 import SmartAnalytics from './components/SmartAnalytics';
 import { AppView } from './types';
 import type { User, DashboardStats, Student } from './types';
-import { LifeBuoy, Layout, MessageCircle, PenTool, Camera, Menu } from 'lucide-react';
+import { LifeBuoy, Layout, MessageCircle, PenTool, Camera, Menu } from './icons';
 import { fetchStudents } from './services/studentService';
 import { generateDashboardInsights } from './services/geminiService';
 import { logUserLogin } from './services/authService';

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { BookOpen, BarChart2, MessageCircle, PenTool, Layout, Leaf, Menu, X, Map, GraduationCap, LogOut, Edit2, Check, Moon, Sun, Camera, Activity } from 'lucide-react';
+import { BookOpen, BarChart2, MessageCircle, PenTool, Layout, Leaf, Menu, X, Map, GraduationCap, LogOut, Moon, Sun, Camera, Activity } from '../icons';
 import { AppView } from '../types';
 import type { User } from '../types';
 

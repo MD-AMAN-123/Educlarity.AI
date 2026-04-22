@@ -1,5 +1,5 @@
 import React from 'react';
-import { Leaf, TreeDeciduous, FileText, Wind } from 'lucide-react';
+import { Leaf, TreeDeciduous, FileText, Wind } from '../icons';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 
 const EcoTracker: React.FC = () => {

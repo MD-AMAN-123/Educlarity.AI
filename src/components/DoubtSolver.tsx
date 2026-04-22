@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Camera, RefreshCw, CheckCircle2, AlertCircle, Image as ImageIcon, Sparkles, Brain, Loader2, StopCircle } from 'lucide-react';
+import { Camera, RefreshCw, CheckCircle2, AlertCircle, ImageIcon, Sparkles, Brain, Loader2, StopCircle } from '../icons';
 import { solveQuestionFromImage } from '../services/geminiService';
 
 const DoubtSolver: React.FC = () => {

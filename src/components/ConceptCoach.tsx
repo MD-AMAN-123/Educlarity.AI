@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Mic, Play, Square, Loader2, Volume2, Globe, Image as ImageIcon, Sparkles } from 'lucide-react';
+import { Send, Mic, Play, Square, Loader2, Volume2, Globe, ImageIcon, Sparkles } from '../icons';
 import { CoachMode, Language } from '../types';
 import type { ChatMessage } from '../types';
 import { generateCoachResponse, blobToBase64, generateVisualAid } from '../services/geminiService';

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { generateLearningPath } from '../services/geminiService';
 import { LearningNode, AppView } from '../types';
-import { Map, Lock, Unlock, CheckCircle, PlayCircle, Loader2, Info } from 'lucide-react';
+import { Map, Lock, Unlock, CheckCircle, PlayCircle, Loader2, Info } from '../icons';
 
 interface LearningPathProps {
   onNavigate: (view: AppView, topic?: string) => void;
