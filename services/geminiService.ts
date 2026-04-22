@@ -1,6 +1,4 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import { GoogleGenAI } from "@google/genai";
-import type { GenerateContentResponse } from "@google/genai";
 import {
   CoachMode,
   Language,
@@ -23,8 +21,15 @@ const apiKey = (import.meta.env.VITE_GEMINI_API_KEY ||
   (typeof process !== 'undefined' ? process.env.API_KEY : null) ||
   "").trim();
 
-const genAI = new GoogleGenerativeAI(apiKey);
-const ai = new GoogleGenAI(apiKey);
+// Safe initialization to prevent blank page crash
+let genAI: any = null;
+if (apiKey && apiKey.length > 10) {
+  try {
+    genAI = new GoogleGenerativeAI(apiKey);
+  } catch (e) {
+    console.error("AI Initialization failed:", e);
+  }
+}
 
 /* ===============================
    RETRY & TIMEOUT WRAPPER
@@ -139,29 +144,18 @@ async function generateCoachResponse(
     });
   }
 
-  const endpoints = [
-    { ver: "v1beta", model: "gemini-2.5-flash" },
-    { ver: "v1beta", model: "gemini-2.0-flash" },
-    { ver: "v1", model: "gemini-1.5-flash" }
-  ];
+  // Fallback chain for robustness
+  const models = ["gemini-1.5-flash", "gemini-2.0-flash", "gemini-1.5-pro"];
 
-  for (const endpoint of endpoints) {
+  for (const modelName of models) {
     try {
-      const url = `https://generativelanguage.googleapis.com/${endpoint.ver}/models/${endpoint.model}:generateContent?key=${apiKey}`;
-
-      const response = await fetchWithTimeout(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ contents })
-      });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        return { text: data.candidates?.[0]?.content?.parts?.[0]?.text || "No response received." };
-      }
+      if (!genAI) break;
+      const model = genAI.getGenerativeModel({ model: modelName });
+      const result = await model.generateContent({ contents });
+      const text = result.response.text();
+      if (text) return { text };
     } catch (err: any) {
-      console.warn(`Attempt with ${endpoint.model} failed. Trying next...`);
+      console.warn(`Attempt with ${modelName} failed. Trying next...`);
     }
   }
 
@@ -181,6 +175,7 @@ async function generateSupportResponse(
     removeStudent: (name: string) => Promise<string>;
   }
 ): Promise<string> {
+  if (!genAI) return "AI Service not initialized.";
   try {
     const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
     const studentList = students
@@ -238,6 +233,7 @@ Otherwise, answer normally.`;
 async function generateVisualAid(
   topic: string
 ): Promise<string | undefined> {
+  if (!genAI) return undefined;
   try {
     const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
     const res = await model.generateContent(`Explain ${topic} clearly with a detailed conceptual breakdown.`);
@@ -254,19 +250,12 @@ async function generateVisualAid(
 async function generateLearningPath(
   subject: string
 ): Promise<LearningNode[]> {
-  const prompt = `Create a professional learning path for "${subject}" as a JSON array of 6-8 milestones. Each milestone must follow this interface:
-    {
-      "id": string;
-      "title": string;
-      "description": string;
-      "status": "LOCKED" | "UNLOCKED" | "IN_PROGRESS" | "MASTERED";
-      "difficulty": "Beginner" | "Intermediate" | "Advanced";
-      "rationale": string; // why this step is next
-    }
+  const prompt = `Create a professional learning path for "${subject}" as a JSON array of 6-8 milestones. 
     Return JSON only. Start the first one as IN_PROGRESS.`;
 
   const fallbackPath: LearningNode[] = [{ id: '1', title: `Basics of ${subject}`, description: 'Fundamentals.', status: 'IN_PROGRESS', difficulty: 'Beginner', rationale: 'Foundation.' }];
 
+  if (!genAI) return fallbackPath;
   try {
     const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
     const res = await model.generateContent(prompt);
@@ -285,18 +274,10 @@ async function generateLearningPath(
 async function generateTeacherInsights(
   data: string
 ): Promise<TeacherInsight[]> {
-  const prompt = `Analyze the following student performance data and provide 3-4 professional educational insights as a JSON array.
-    Each insight must follow this interface:
-    {
-      "topic": string;
-      "avgScore": number;
-      "difficultyLevel": "Low" | "Medium" | "High";
-      "recommendation": string;
-    }
-    
-    Data: ${data}
-    RETURN ONLY THE JSON ARRAY.`;
+  const prompt = `Analyze the performance data and provide 3-4 professional insights as a JSON array. 
+    Data: ${data}`;
 
+  if (!genAI) return [];
   try {
     const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
     const res = await model.generateContent(prompt);
@@ -316,9 +297,9 @@ async function generateQuiz(
   difficulty: string
 ): Promise<QuizQuestion[]> {
   const prompt = `Generate a 5-question multiple choice quiz about "${topic}" (difficulty: ${difficulty}). 
-    Return as a JSON array where each object is:
-    { "question": string, "options": string[], "correctAnswer": number, "explanation": string }`;
+    Return as a JSON array.`;
 
+  if (!genAI) return [];
   try {
     const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
     const res = await model.generateContent(prompt);
@@ -341,6 +322,7 @@ async function solveQuestionFromImage(
     steps: ["Analysis failed."]
   };
 
+  if (!genAI) return fallback;
   try {
     const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
     const prompt = `Solve this question step-by-step. Return JSON only with topic, answer, steps.`;
@@ -370,6 +352,7 @@ async function generateAssignment(
     deadline: "1 week"
   };
 
+  if (!genAI) return fallback;
   try {
     const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
     const res = await model.generateContent(prompt);
@@ -386,6 +369,7 @@ async function generateAssignment(
 async function checkOriginality(
   text: string
 ): Promise<{ score: number; analysis: string }> {
+  if (!genAI) return { score: 0, analysis: "AI not initialized." };
   try {
     const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
     const res = await model.generateContent(`Check the originality of this text: ${text.substring(0, 500)}`);
@@ -406,7 +390,8 @@ async function generateDashboardInsights(
   userName: string,
   stats: DashboardStats
 ): Promise<AIInsight[]> {
-  const prompt = `Generate 3 encouraging study insights for ${userName} based on stats: ${JSON.stringify(stats)}. Return JSON array.`;
+  const prompt = `Generate 3 study insights for ${userName} based on stats: ${JSON.stringify(stats)}. Return JSON array.`;
+  if (!genAI) return [{ title: "Keep Going!", description: "Consistency leads to mastery.", type: "success" }];
   try {
     const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
     const res = await model.generateContent(prompt);

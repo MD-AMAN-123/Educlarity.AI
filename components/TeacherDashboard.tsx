@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { generateTeacherInsights } from '../services/geminiService';
-import { TeacherInsight, Student, Assignment } from '../types';
+import { TeacherInsight, Student, Assignment, User } from '../types';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { GraduationCap, Users, AlertCircle, TrendingUp, Loader2, Lock, User as UserIcon, ArrowRight, Download, Plus, Trash2, X, Search, FileText, Save, ChevronLeft, Edit2, Sparkles, ClipboardList, Calendar } from 'lucide-react';
 import { addStudent, removeStudent, updateStudent } from '../services/studentService';

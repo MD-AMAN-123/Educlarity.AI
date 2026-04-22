@@ -18,9 +18,9 @@ export class OfflineAIService {
   }
 
   async isWebGPUSupported(): Promise<boolean> {
-    if (!navigator.gpu) return false;
+    if (!(navigator as any).gpu) return false;
     try {
-      const adapter = await navigator.gpu.requestAdapter();
+      const adapter = await (navigator as any).gpu.requestAdapter();
       return !!adapter;
     } catch {
       return false;

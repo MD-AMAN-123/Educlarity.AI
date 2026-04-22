@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { LifeBuoy, MessageSquare, Mail, Phone, ChevronDown, ChevronUp, Send, Loader2, CheckCircle, FileText } from 'lucide-react';
 import { generateSupportResponse } from '../services/geminiService';
-import { ChatMessage, Student } from '../types';
+import { ChatMessage, Student, User } from '../types';
 import { addStudent, removeStudent } from '../services/studentService';
 
 interface CustomerSupportProps {
