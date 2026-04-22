@@ -15,5 +15,10 @@ export default defineConfig({
   },
   optimizeDeps: {
     exclude: ['express', 'cors', 'dotenv']
+  },
+  resolve: {
+    alias: {
+      '@': '/src',
+    },
   }
 });

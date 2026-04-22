@@ -16,13 +16,11 @@
     "allowJs": true,
     "jsx": "react-jsx",
     "paths": {
-      "@/*": [
-        "./*"
-      ]
+      "@/*": ["./src/*"]
     },
     "allowImportingTsExtensions": true,
     "noEmit": true
   },
-  "include": ["src", "**/*.ts", "**/*.tsx", "*.ts", "*.tsx"],
+  "include": ["src"],
   "exclude": ["node_modules", "dist", "api"]
 }
