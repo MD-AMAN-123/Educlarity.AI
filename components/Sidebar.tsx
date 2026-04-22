@@ -24,7 +24,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onChangeView, isMobileMe
       document.documentElement.classList.remove('dark');
     }
   }, [isDarkMode]);
-  
+
   const navItems = [
     { id: AppView.DASHBOARD, label: 'Dashboard', icon: Layout },
     { id: AppView.LEARNING_PATH, label: 'Learning Path', icon: Map },
@@ -49,10 +49,10 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onChangeView, isMobileMe
       {/* Mobile Header */}
       <div className="md:hidden fixed top-0 left-0 right-0 h-16 bg-white dark:bg-slate-900 border-b dark:border-slate-800 z-50 flex items-center justify-between px-4">
         <div className="flex items-center gap-2">
-           <span className="text-xl font-bold text-indigo-600 dark:text-indigo-400">EduClarity<span className="text-orange-500">.AI</span></span>
+          <span className="text-xl font-bold text-indigo-600 dark:text-indigo-400">EduClarity<span className="text-orange-500">.AI</span></span>
         </div>
         <div className="flex items-center gap-3">
-          <button 
+          <button
             onClick={() => setIsDarkMode(!isDarkMode)}
             className="p-2 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors"
           >
@@ -72,9 +72,9 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onChangeView, isMobileMe
       `}>
         <div className="flex flex-col h-full bg-white/40 dark:bg-slate-900/40 backdrop-blur-xl">
           <div className="h-20 flex items-center px-6 border-b dark:border-slate-800 hidden md:flex shrink-0">
-             <span className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
-              Edu<span className="text-indigo-600">Free</span><span className="text-indigo-400">.AI</span>
-             </span>
+            <span className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
+              Edu<span className="text-indigo-600">Clarity</span><span className="text-indigo-400">.AI</span>
+            </span>
           </div>
 
           <nav className="flex-1 p-4 space-y-2 overflow-y-auto mt-16 md:mt-4">
@@ -90,8 +90,8 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onChangeView, isMobileMe
                   }}
                   className={`
                     w-full flex items-center gap-3 px-4 py-3 text-sm font-bold rounded-2xl transition-all duration-200
-                    ${isActive 
-                      ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200 dark:shadow-indigo-900/20 scale-[1.02]' 
+                    ${isActive
+                      ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200 dark:shadow-indigo-900/20 scale-[1.02]'
                       : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-200'}
                   `}
                 >
@@ -101,13 +101,13 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onChangeView, isMobileMe
               );
             })}
           </nav>
-          
+
           <div className="p-4 border-t dark:border-slate-800 space-y-4">
             {/* User Profile */}
             <div className="flex items-center gap-3 p-3 rounded-2xl bg-white/50 dark:bg-slate-800/50 border dark:border-slate-700 shadow-sm">
               <div className="relative">
-                <img 
-                  src={user.avatar || `https://ui-avatars.com/api/?name=${user.name}&background=4f46e5&color=fff`} 
+                <img
+                  src={user.avatar || `https://ui-avatars.com/api/?name=${user.name}&background=4f46e5&color=fff`}
                   alt={user.name}
                   className="w-10 h-10 rounded-xl"
                 />
@@ -121,14 +121,14 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onChangeView, isMobileMe
 
             {/* Bottom Actions */}
             <div className="grid grid-cols-2 gap-2">
-               <button 
+              <button
                 onClick={() => setIsDarkMode(!isDarkMode)}
                 className="flex items-center justify-center gap-2 p-3 bg-slate-100 dark:bg-slate-800 rounded-2xl text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
                 title="Toggle Theme"
               >
                 {isDarkMode ? <Sun size={18} /> : <Moon size={18} />}
               </button>
-              <button 
+              <button
                 onClick={onLogout}
                 className="flex items-center justify-center gap-2 p-3 bg-red-50 dark:bg-red-900/20 rounded-2xl text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors"
                 title="Logout"
@@ -139,10 +139,10 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onChangeView, isMobileMe
           </div>
         </div>
       </div>
-      
+
       {/* Overlay */}
       {isMobileMenuOpen && (
-        <div 
+        <div
           className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-30 md:hidden"
           onClick={() => setIsMobileMenuOpen(false)}
         />

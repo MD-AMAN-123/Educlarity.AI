@@ -113,35 +113,56 @@ async function generateCoachResponse(
     ? `You are "${bot.name}", specializing in ${bot.subject}. Personality: ${bot.personality}. Respond in ${language}.`
     : `You are "EduClarity AI", a conceptual coach. Mode: ${mode}. Language: ${language}. Use the Socratic method.`;
 
-  const contents = [
+  // Construct clean history with strictly alternating roles
+  const cleanedHistory = history
+    .filter(h => h.text && h.text.trim().length > 0)
+    .map(h => ({
+      role: h.role === "model" ? "model" : "user",
+      parts: [{ text: h.text }]
+    }));
+
+  // Ensure history doesn't start with 'model' if it follows a 'model' understood message
+  // If the first history message is 'model', we insert a dummy user message or merge
+  const contents: any[] = [
     {
       role: "user",
       parts: [{ text: systemPrompt }]
     },
     {
       role: "model",
-      parts: [{ text: "Understood. I am ready to assist." }]
-    },
-    ...history.map(h => ({
-      role: h.role === "model" ? "model" : "user",
-      parts: [{ text: h.text }]
-    }))
+      parts: [{ text: "Understood. I am EduClarity AI, your conceptual coach. How can I help you today?" }]
+    }
   ];
 
-  const currentPart: any = { text: currentMessage || "Process this input" };
-  if (audioBase64) {
-    contents.push({
-      role: "user",
-      parts: [
-        currentPart,
-        { inlineData: { mimeType: "audio/webm", data: audioBase64 } }
-      ]
-    });
+  // Add history, ensuring no two consecutive roles are the same
+  cleanedHistory.forEach(item => {
+    const lastRole = contents[contents.length - 1].role;
+    if (item.role !== lastRole) {
+      contents.push(item);
+    } else {
+      // If same role, append text to last message's part
+      contents[contents.length - 1].parts[0].text += "\n" + item.parts[0].text;
+    }
+  });
+
+  // Final check for the current message
+  const lastMsg = contents[contents.length - 1];
+  if (lastMsg.role === "user") {
+    // If last was user, we merge current message into it
+    lastMsg.parts[0].text += "\n" + (currentMessage || "");
+    if (audioBase64) {
+      lastMsg.parts.push({ inlineData: { mimeType: "audio/webm", data: audioBase64 } });
+    }
   } else {
-    contents.push({
+    // Start a new user block
+    const newUserMsg: any = {
       role: "user",
-      parts: [currentPart]
-    });
+      parts: [{ text: currentMessage || "Please continue." }]
+    };
+    if (audioBase64) {
+      newUserMsg.parts.push({ inlineData: { mimeType: "audio/webm", data: audioBase64 } });
+    }
+    contents.push(newUserMsg);
   }
 
   // Fallback chain for robustness
@@ -159,7 +180,7 @@ async function generateCoachResponse(
     }
   }
 
-  return { text: "Connectivity Error: Failed to reach AI service. Please check your internet." };
+  return { text: "Connectivity Error: Failed to reach AI service. Please verify your VITE_GEMINI_API_KEY in Vercel settings and check your internet connection." };
 }
 
 /* ===============================
@@ -250,17 +271,26 @@ async function generateVisualAid(
 async function generateLearningPath(
   subject: string
 ): Promise<LearningNode[]> {
-  const prompt = `Create a professional learning path for "${subject}" as a JSON array of 6-8 milestones. 
-    Return JSON only. Start the first one as IN_PROGRESS.`;
+  const prompt = `Act as an expert educational architect. Create a comprehensive, multi-stage learning roadmap for "${subject}".
+    REQUIREMENTS:
+    - Return a JSON array of exactly 8 milestones.
+    - Each milestone must have: id (string), title (string), description (detailed string), status (one of: LOCKED, UNLOCKED, IN_PROGRESS, MASTERED), difficulty (string), rationale (string).
+    - Set the first milestone's status to "IN_PROGRESS" and others to "LOCKED".
+    - Return RAW JSON ONLY. No markdown, no backticks.`;
 
-  const fallbackPath: LearningNode[] = [{ id: '1', title: `Basics of ${subject}`, description: 'Fundamentals.', status: 'IN_PROGRESS', difficulty: 'Beginner', rationale: 'Foundation.' }];
+  const fallbackPath: LearningNode[] = [
+    { id: '1', title: `Fundamentals of ${subject}`, description: 'Master the core concepts and basic principles.', status: 'IN_PROGRESS', difficulty: 'Beginner', rationale: 'Essential foundation for advanced topics.' },
+    { id: '2', title: 'Core Mechanics', description: 'Deep dive into standard operations and methodologies.', status: 'LOCKED', difficulty: 'Intermediate', rationale: 'Builds upon fundamentals.' },
+    { id: '3', title: 'Advanced Applications', description: 'Real-world problem solving and complex scenarios.', status: 'LOCKED', difficulty: 'Advanced', rationale: 'Applying knowledge to practice.' }
+  ];
 
   if (!genAI) return fallbackPath;
   try {
     const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
     const res = await model.generateContent(prompt);
-    const nodes = safeParse<LearningNode[]>(res.response.text(), []);
-    return nodes.length > 0 ? nodes : fallbackPath;
+    const text = res.response.text();
+    const nodes = safeParse<LearningNode[]>(text, []);
+    return nodes.length >= 3 ? nodes : fallbackPath;
   } catch (err) {
     console.error("Learning Path Error:", err);
     return fallbackPath;
@@ -296,15 +326,23 @@ async function generateQuiz(
   topic: string,
   difficulty: string
 ): Promise<QuizQuestion[]> {
-  const prompt = `Generate a 5-question multiple choice quiz about "${topic}" (difficulty: ${difficulty}). 
-    Return as a JSON array.`;
+  const prompt = `Act as an expert examiner. Generate a professional 5-question multiple choice quiz about "${topic}".
+    Difficulty Level: ${difficulty}
+    
+    REQUIREMENTS:
+    - Return a JSON array of objects.
+    - Each object must have: question (string), options (array of 4 strings), correctAnswerIndex (index 0-3), and explanation (detailed string).
+    - Ensure questions are challenging and accurate.
+    - Return RAW JSON ONLY. No markdown tags.`;
 
   if (!genAI) return [];
   try {
     const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
     const res = await model.generateContent(prompt);
-    return safeParse<QuizQuestion[]>(res.response.text(), []);
-  } catch {
+    const questions = safeParse<QuizQuestion[]>(res.response.text(), []);
+    return questions;
+  } catch (err) {
+    console.error("Quiz Generation Error:", err);
     return [];
   }
 }

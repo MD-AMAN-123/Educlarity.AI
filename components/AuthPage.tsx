@@ -21,6 +21,11 @@ const AuthPage: React.FC<AuthPageProps> = ({ onLogin }) => {
     setIsLoading(true);
 
     try {
+      // Check for missing config before attempting fetch
+      if (!supabase || !import.meta.env.VITE_SUPABASE_URL || import.meta.env.VITE_SUPABASE_URL === 'https://placeholder.supabase.co') {
+        throw new Error("Supabase Configuration Missing: Please add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to your Vercel environment variables.");
+      }
+
       if (isLogin) {
         // --- Supabase Sign In ---
         const { data, error } = await supabase.auth.signInWithPassword({
@@ -64,8 +69,12 @@ const AuthPage: React.FC<AuthPageProps> = ({ onLogin }) => {
         }
       }
     } catch (error: any) {
-      console.error('Auth error:', error.message);
-      alert(error.message); // Simple alert for feedback
+      console.error('Auth error:', error);
+      let msg = error.message;
+      if (msg === 'Failed to fetch') {
+        msg = "Network Error: Could not connect to Supabase. Please ensure your VITE_SUPABASE_URL is correct in Vercel settings and that you have an active internet connection.";
+      }
+      alert(msg);
     } finally {
       setIsLoading(false);
     }
