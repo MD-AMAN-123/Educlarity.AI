@@ -71,9 +71,13 @@ const AuthPage: React.FC<AuthPageProps> = ({ onLogin }) => {
     } catch (error: any) {
       console.error('Auth error:', error);
       let msg = error.message;
+      
       if (msg === 'Failed to fetch') {
-        msg = "Network Error: Could not connect to Supabase. Please ensure your VITE_SUPABASE_URL is correct in Vercel settings and that you have an active internet connection.";
+        msg = "Network Error: Could not connect to Supabase. Please ensure your VITE_SUPABASE_URL is correct in Vercel settings.";
+      } else if (msg.toLowerCase().includes('rate limit')) {
+        msg = "Supabase Limit Reached: You've attempted too many signups in a short time. \n\nTIP: Go to Supabase Dashboard > Authentication > Providers > Email and TURN OFF 'Confirm Email' to bypass this limit.";
       }
+      
       alert(msg);
     } finally {
       setIsLoading(false);
