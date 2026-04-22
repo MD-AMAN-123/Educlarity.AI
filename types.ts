@@ -83,6 +83,12 @@ export interface Student {
   status: 'At Risk' | 'Stable' | 'Excelling';
 }
 
+export interface Assignment {
+  title: string;
+  tasks: string[];
+  deadline: string;
+}
+
 export interface AIInsight {
   title: string;
   description: string;

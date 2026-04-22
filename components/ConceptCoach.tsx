@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Mic, Play, Square, Loader2, Volume2, Globe, Image as ImageIcon } from 'lucide-react';
+import { Send, Mic, Play, Square, Loader2, Volume2, Globe, Image as ImageIcon, Sparkles } from 'lucide-react';
 import { CoachMode, ChatMessage, Language } from '../types';
 import { generateCoachResponse, blobToBase64, generateVisualAid } from '../services/geminiService';
 
@@ -401,9 +401,10 @@ const ConceptCoach: React.FC<ConceptCoachProps> = ({ initialTopic, onClearTopic 
           <button
             onClick={() => handleSendMessage(inputText)}
             disabled={(!inputText.trim() && !isRecording) || isProcessing || isGeneratingImage}
-            className="bg-indigo-600 text-white p-3 rounded-full hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-lg hover:shadow-indigo-200 dark:hover:shadow-none"
+            className="bg-indigo-600 text-white p-3 rounded-full hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg hover:shadow-indigo-200 dark:hover:shadow-none flex items-center justify-center gap-1"
+            title="Send Message"
           >
-            <Send size={20} />
+            <Sparkles size={20} className={isProcessing ? 'animate-pulse' : ''} />
           </button>
         </div>
         <p className="text-center text-[10px] text-slate-400 dark:text-slate-500 mt-2">

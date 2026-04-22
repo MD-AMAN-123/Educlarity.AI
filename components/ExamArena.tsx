@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { generateQuiz, checkOriginality } from '../services/geminiService';
 import { QuizQuestion } from '../types';
-import { Loader2, Check, X, AlertTriangle, BookOpen } from 'lucide-react';
+import { Loader2, Check, X, AlertTriangle, BookOpen, Sparkles } from 'lucide-react';
 
 interface ExamArenaProps {
   initialTopic?: string;
@@ -15,7 +15,6 @@ const ExamArena: React.FC<ExamArenaProps> = ({ initialTopic, onClearTopic }) => 
   const [answers, setAnswers] = useState<{ [key: number]: number }>({});
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
 
   // Responsible AI: Anti-cheat Essay area
   const [essayText, setEssayText] = useState('');
@@ -134,9 +133,15 @@ const ExamArena: React.FC<ExamArenaProps> = ({ initialTopic, onClearTopic }) => 
           <button
             onClick={handleGenerate}
             disabled={loading || !topic}
-            className="w-full sm:w-auto bg-indigo-600 text-white px-8 py-3 rounded-2xl font-bold hover:bg-indigo-700 disabled:opacity-50 transition-all flex items-center justify-center gap-2 shadow-lg shadow-indigo-100 active:scale-95"
+            className="w-full sm:w-auto bg-indigo-600 text-white px-8 py-3 rounded-2xl font-bold hover:bg-indigo-700 disabled:opacity-50 transition-all flex items-center justify-center gap-2 shadow-lg shadow-indigo-100 active:scale-95 group"
           >
-            {loading ? <Loader2 className="animate-spin" size={18} /> : 'Start Assessment'}
+            {loading ? (
+              <Loader2 className="animate-spin" size={18} />
+            ) : (
+              <>
+                <Sparkles size={18} className="group-hover:animate-pulse" /> Generate with AI
+              </>
+            )}
           </button>
         </div>
       </div>

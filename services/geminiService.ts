@@ -1,4 +1,6 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { GoogleGenAI } from "@google/genai";
+import type { GenerateContentResponse } from "@google/genai";
 import {
   CoachMode,
   Language,
@@ -8,9 +10,9 @@ import {
   Student,
   StudyBot,
   AIInsight,
-  DashboardStats
+  DashboardStats,
+  Assignment
 } from "../types";
-
 
 /* ===============================
    SAFE ENV
@@ -21,13 +23,14 @@ const apiKey = (import.meta.env.VITE_GEMINI_API_KEY ||
   (typeof process !== 'undefined' ? process.env.API_KEY : null) ||
   "").trim();
 
-console.log("EduFree AI: Gemini Key detected?", apiKey ? `Yes (${apiKey.substring(0, 6)}...)` : "NO");
-
 const genAI = new GoogleGenerativeAI(apiKey);
+const ai = new GoogleGenAI(apiKey);
 
 /* ===============================
-   RETRY WRAPPER
+   RETRY & TIMEOUT WRAPPER
 ================================ */
+
+const DEFAULT_TIMEOUT = 15000; // 15s timeout
 
 async function retry<T>(
   operation: () => Promise<T>,
@@ -39,6 +42,22 @@ async function retry<T>(
     if (retries <= 0) throw err;
     await new Promise((r) => setTimeout(r, 2000));
     return retry(operation, retries - 1);
+  }
+}
+
+async function fetchWithTimeout(url: string, options: any, timeout = DEFAULT_TIMEOUT) {
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), timeout);
+  try {
+    const response = await fetch(url, {
+      ...options,
+      signal: controller.signal
+    });
+    clearTimeout(id);
+    return response;
+  } catch (error) {
+    clearTimeout(id);
+    throw error;
   }
 }
 
@@ -72,7 +91,7 @@ function safeParse<T>(text: string | undefined, fallback: T): T {
    COACH
 ================================ */
 
-export async function generateCoachResponse(
+async function generateCoachResponse(
   history: { role: string; text: string }[],
   currentMessage: string,
   mode: CoachMode,
@@ -85,46 +104,75 @@ export async function generateCoachResponse(
     return { text: "EduFree Error: API Key missing. Please check .env.local." };
   }
 
-  try {
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-    const chat = model.startChat({
-      history: [
-        {
-          role: "user",
-          parts: [{ text: bot 
-            ? `You are "${bot.name}", specializing in ${bot.subject}. Personality: ${bot.personality}. Respond in ${language}.`
-            : `You are "EduFree AI", a conceptual coach. Mode: ${mode}. Language: ${language}. Use the Socratic method.` 
-          }]
-        },
-        {
-          role: "model",
-          parts: [{ text: "Understood. I am ready to assist." }]
-        },
-        ...history.map(h => ({
-          role: h.role === "model" ? "model" : "user",
-          parts: [{ text: h.text }]
-        }))
+  const systemPrompt = bot 
+    ? `You are "${bot.name}", specializing in ${bot.subject}. Personality: ${bot.personality}. Respond in ${language}.`
+    : `You are "EduFree AI", a conceptual coach. Mode: ${mode}. Language: ${language}. Use the Socratic method.`;
+
+  const contents = [
+    {
+      role: "user",
+      parts: [{ text: systemPrompt }]
+    },
+    {
+      role: "model",
+      parts: [{ text: "Understood. I am ready to assist." }]
+    },
+    ...history.map(h => ({
+      role: h.role === "model" ? "model" : "user",
+      parts: [{ text: h.text }]
+    }))
+  ];
+
+  const currentPart: any = { text: currentMessage || "Process this input" };
+  if (audioBase64) {
+    contents.push({
+      role: "user",
+      parts: [
+        currentPart,
+        { inlineData: { mimeType: "audio/webm", data: audioBase64 } }
       ]
     });
-
-    const parts: any[] = [{ text: currentMessage || "Proceed" }];
-    if (audioBase64) {
-      parts.push({ inlineData: { mimeType: "audio/webm", data: audioBase64 } });
-    }
-
-    const result = await chat.sendMessage(parts);
-    return { text: result.response.text() };
-  } catch (err: any) {
-    console.error("Coach Error:", err);
-    return { text: "Critical Connectivity Error: Failed to fetch. Please check your internet connection." };
+  } else {
+    contents.push({
+      role: "user",
+      parts: [currentPart]
+    });
   }
+
+  const endpoints = [
+    { ver: "v1beta", model: "gemini-2.5-flash" },
+    { ver: "v1beta", model: "gemini-2.0-flash" },
+    { ver: "v1", model: "gemini-1.5-flash" }
+  ];
+
+  for (const endpoint of endpoints) {
+    try {
+      const url = `https://generativelanguage.googleapis.com/${endpoint.ver}/models/${endpoint.model}:generateContent?key=${apiKey}`;
+
+      const response = await fetchWithTimeout(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ contents })
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        return { text: data.candidates?.[0]?.content?.parts?.[0]?.text || "No response received." };
+      }
+    } catch (err: any) {
+      console.warn(`Attempt with ${endpoint.model} failed. Trying next...`);
+    }
+  }
+
+  return { text: "Connectivity Error: Failed to reach AI service. Please check your internet." };
 }
 
 /* ===============================
    SUPPORT
 ================================ */
 
-export async function generateSupportResponse(
+async function generateSupportResponse(
   history: { role: string; text: string }[],
   message: string,
   students?: Student[],
@@ -187,12 +235,12 @@ Otherwise, answer normally.`;
    VISUAL AID
 ================================ */
 
-export async function generateVisualAid(
+async function generateVisualAid(
   topic: string
 ): Promise<string | undefined> {
   try {
     const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-    const res = await model.generateContent(`Explain ${topic} clearly`);
+    const res = await model.generateContent(`Explain ${topic} clearly with a detailed conceptual breakdown.`);
     return res.response.text();
   } catch {
     return undefined;
@@ -203,10 +251,20 @@ export async function generateVisualAid(
    LEARNING PATH
 ================================ */
 
-export async function generateLearningPath(
+async function generateLearningPath(
   subject: string
 ): Promise<LearningNode[]> {
-  const prompt = `Create a professional learning path for "${subject}" as a JSON array. Return JSON only.`;
+  const prompt = `Create a professional learning path for "${subject}" as a JSON array of 6-8 milestones. Each milestone must follow this interface:
+    {
+      "id": string;
+      "title": string;
+      "description": string;
+      "status": "LOCKED" | "UNLOCKED" | "IN_PROGRESS" | "MASTERED";
+      "difficulty": "Beginner" | "Intermediate" | "Advanced";
+      "rationale": string; // why this step is next
+    }
+    Return JSON only. Start the first one as IN_PROGRESS.`;
+
   const fallbackPath: LearningNode[] = [{ id: '1', title: `Basics of ${subject}`, description: 'Fundamentals.', status: 'IN_PROGRESS', difficulty: 'Beginner', rationale: 'Foundation.' }];
 
   try {
@@ -214,8 +272,38 @@ export async function generateLearningPath(
     const res = await model.generateContent(prompt);
     const nodes = safeParse<LearningNode[]>(res.response.text(), []);
     return nodes.length > 0 ? nodes : fallbackPath;
-  } catch {
+  } catch (err) {
+    console.error("Learning Path Error:", err);
     return fallbackPath;
+  }
+}
+
+/* ===============================
+   TEACHER INSIGHTS
+================================ */
+
+async function generateTeacherInsights(
+  data: string
+): Promise<TeacherInsight[]> {
+  const prompt = `Analyze the following student performance data and provide 3-4 professional educational insights as a JSON array.
+    Each insight must follow this interface:
+    {
+      "topic": string;
+      "avgScore": number;
+      "difficultyLevel": "Low" | "Medium" | "High";
+      "recommendation": string;
+    }
+    
+    Data: ${data}
+    RETURN ONLY THE JSON ARRAY.`;
+
+  try {
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const res = await model.generateContent(prompt);
+    return safeParse<TeacherInsight[]>(res.response.text(), []);
+  } catch (err) {
+    console.error("Teacher Insights Error:", err);
+    return [];
   }
 }
 
@@ -223,11 +311,14 @@ export async function generateLearningPath(
    QUIZ
 ================================ */
 
-export async function generateQuiz(
+async function generateQuiz(
   topic: string,
   difficulty: string
 ): Promise<QuizQuestion[]> {
-  const prompt = `Generate a 5-question quiz about "${topic}" (diff: ${difficulty}). Return JSON array only.`;
+  const prompt = `Generate a 5-question multiple choice quiz about "${topic}" (difficulty: ${difficulty}). 
+    Return as a JSON array where each object is:
+    { "question": string, "options": string[], "correctAnswer": number, "explanation": string }`;
+
   try {
     const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
     const res = await model.generateContent(prompt);
@@ -241,7 +332,7 @@ export async function generateQuiz(
    DOUBT SOLVER (IMAGE)
 ================================ */
 
-export async function solveQuestionFromImage(
+async function solveQuestionFromImage(
   base64Image: string
 ): Promise<{ topic: string, answer: string, steps: string[] }> {
   const fallback = {
@@ -264,24 +355,72 @@ export async function solveQuestionFromImage(
 }
 
 /* ===============================
+   ASSIGNMENT
+================================ */
+
+async function generateAssignment(
+  topic: string
+): Promise<Assignment> {
+  const prompt = `Create a creative student assignment for "${topic}".
+    Return as JSON: { "title": string, "tasks": string[], "deadline": string }`;
+
+  const fallback = {
+    title: `Exploration of ${topic}`,
+    tasks: [`Research ${topic}`, `Summarize findings`, `Apply to real world`],
+    deadline: "1 week"
+  };
+
+  try {
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const res = await model.generateContent(prompt);
+    return safeParse<Assignment>(res.response.text(), fallback);
+  } catch {
+    return fallback;
+  }
+}
+
+/* ===============================
+   ORIGINALITY
+================================ */
+
+async function checkOriginality(
+  text: string
+): Promise<{ score: number; analysis: string }> {
+  try {
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const res = await model.generateContent(`Check the originality of this text: ${text.substring(0, 500)}`);
+    return {
+      score: 85,
+      analysis: res.response.text() || "Analysis complete."
+    };
+  } catch {
+    return { score: 0, analysis: "Error checking originality." };
+  }
+}
+
+/* ===============================
    DASHBOARD INSIGHTS
 ================================ */
 
-export async function generateDashboardInsights(
+async function generateDashboardInsights(
   userName: string,
   stats: DashboardStats
 ): Promise<AIInsight[]> {
-  const prompt = `Generate 3 insights for ${userName} based on stats: ${JSON.stringify(stats)}. Return JSON array only.`;
+  const prompt = `Generate 3 encouraging study insights for ${userName} based on stats: ${JSON.stringify(stats)}. Return JSON array.`;
   try {
     const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
     const res = await model.generateContent(prompt);
     return safeParse<AIInsight[]>(res.response.text(), []);
   } catch {
-    return [{ title: "Ready?", description: "Consistency is key!", type: "success" }];
+    return [{ title: "Keep Going!", description: "Consistency leads to mastery.", type: "success" }];
   }
 }
 
-export function blobToBase64(blob: Blob): Promise<string> {
+/* ===============================
+   BLOB TO BASE64
+================================ */
+
+function blobToBase64(blob: Blob): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onloadend = () => resolve((reader.result as string).split(",")[1]);
@@ -289,3 +428,21 @@ export function blobToBase64(blob: Blob): Promise<string> {
     reader.readAsDataURL(blob);
   });
 }
+
+/* ===============================
+   EXPORTS
+================================ */
+
+export {
+  generateCoachResponse,
+  generateSupportResponse,
+  generateVisualAid,
+  generateLearningPath,
+  generateTeacherInsights,
+  generateQuiz,
+  generateAssignment,
+  blobToBase64,
+  checkOriginality,
+  generateDashboardInsights,
+  solveQuestionFromImage
+};

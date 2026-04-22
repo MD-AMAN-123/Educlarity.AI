@@ -25,6 +25,7 @@ const LearningPath: React.FC<LearningPathProps> = ({ onNavigate }) => {
 
   return (
     <div className="p-6 max-w-5xl mx-auto space-y-12 animate-fade-in pb-32">
+      {/* Header Section */}
       <div className="bg-white dark:bg-slate-800 p-8 rounded-3xl border dark:border-slate-700 shadow-xl overflow-hidden relative">
         <div className="absolute top-0 right-0 p-8 opacity-5">
           <Map size={120} />
@@ -51,9 +52,15 @@ const LearningPath: React.FC<LearningPathProps> = ({ onNavigate }) => {
             <button
               onClick={handleGenerate}
               disabled={loading || !subject}
-              className="w-full sm:w-auto bg-indigo-600 text-white px-8 py-4 rounded-2xl font-bold hover:bg-indigo-700 disabled:opacity-50 transition-all flex items-center justify-center gap-2 shadow-lg shadow-indigo-200 dark:shadow-none active:scale-95"
+              className="w-full sm:w-auto bg-indigo-600 text-white px-8 py-4 rounded-2xl font-bold hover:bg-indigo-700 disabled:opacity-50 transition-all flex items-center justify-center gap-2 shadow-lg shadow-indigo-200 dark:shadow-none active:scale-95 group"
             >
-              {loading ? <Loader2 className="animate-spin" size={20} /> : 'Build My Path'}
+              {loading ? (
+                <Loader2 className="animate-spin" size={20} />
+              ) : (
+                <>
+                  <span className="group-hover:animate-pulse">✨</span> Generate with AI
+                </>
+              )}
             </button>
           </div>
         </div>
@@ -61,8 +68,8 @@ const LearningPath: React.FC<LearningPathProps> = ({ onNavigate }) => {
 
       {nodes.length > 0 && (
         <div className="relative pt-10 px-4">
-          {/* S-curve connector line (simplified) */}
-          <div className="absolute left-1/2 top-0 bottom-0 w-1 bg-gradient-to-b from-indigo-500 via-purple-500 to-indigo-500 z-0 hidden md:block"></div>
+          {/* Connector line */}
+          <div className="absolute left-1/2 top-0 bottom-0 w-1 bg-gradient-to-b from-indigo-500 via-purple-500 to-indigo-500 z-0 hidden md:block opacity-20"></div>
 
           <div className="space-y-16 relative z-10">
             {nodes.map((node, index) => {
