@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Mail, Lock, User as UserIcon, ArrowRight, Loader2, BrainCircuit, Sparkles, ShieldCheck, Zap } from 'lucide-react';
-import { User } from '../types';
+import type { User } from '../types';
 import { supabase } from '../services/supabaseClient';
 
 interface AuthPageProps {
@@ -108,7 +108,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ onLogin }) => {
               EduClarity<span className="text-indigo-400">.AI</span>
             </h1>
             <p className="text-indigo-200/60 text-xl font-medium tracking-[0.3em] uppercase">
-              Learn Anytime. Anywhere. Even Offline.
+              Intelligent. Personalized. Real-time.
             </p>
           </div>
         </div>

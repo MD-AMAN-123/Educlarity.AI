@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { BookOpen, BarChart2, MessageCircle, PenTool, Layout, Leaf, Menu, X, Map, GraduationCap, LogOut, Edit2, Check, Moon, Sun, Camera, Activity } from 'lucide-react';
-import { AppView, User } from '../types';
+import { AppView } from '../types';
+import type { User } from '../types';
 
 interface SidebarProps {
   currentView: AppView;

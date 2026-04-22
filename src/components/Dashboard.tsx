@@ -1,7 +1,8 @@
 import React from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip } from 'recharts';
 import { CheckCircle, Clock, Award, AlertTriangle, Globe, Sparkles, BrainCircuit, Zap, Camera, Flame, Trophy, Target } from 'lucide-react';
-import { User, AppView, DashboardStats } from '../types';
+import { AppView } from '../types';
+import type { User, DashboardStats } from '../types';
 
 interface DashboardProps {
   user: User;
@@ -37,7 +38,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, stats, onNavigate }) => {
                   EduClarity<span className="text-purple-300">.AI</span>
                 </span>
                 <span className="text-[10px] text-indigo-200 uppercase tracking-widest font-semibold mt-0.5">
-                  Learn Anytime. Anywhere. Even Offline.
+                  Intelligent. Personalized. Real-time.
                 </span>
               </div>
             </div>
@@ -67,10 +68,10 @@ const Dashboard: React.FC<DashboardProps> = ({ user, stats, onNavigate }) => {
 
             <div className="bg-white/10 backdrop-blur-md border border-white/10 p-4 rounded-2xl flex items-center gap-4 shadow-lg transition-transform hover:scale-[1.02]">
               <div className="bg-purple-500/80 p-2.5 rounded-xl shadow-inner"><BrainCircuit className="w-5 h-5 text-white" /></div>
-              <div>
-                <p className="font-bold text-sm">Offline AI Tutor</p>
-                <p className="text-xs text-indigo-200">On-device intelligent tutoring</p>
-              </div>
+            <div>
+              <p className="font-bold text-sm">Advanced AI Tutor</p>
+              <p className="text-xs text-indigo-200">Personalized neural learning</p>
+            </div>
             </div>
 
             <div className="bg-white/10 backdrop-blur-md border border-white/10 p-4 rounded-2xl flex items-center gap-4 shadow-lg transition-transform hover:scale-[1.02]">

@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Send, Mic, Play, Square, Loader2, Volume2, Globe, Image as ImageIcon, Sparkles } from 'lucide-react';
-import { CoachMode, ChatMessage, Language } from '../types';
+import { CoachMode, Language } from '../types';
+import type { ChatMessage } from '../types';
 import { generateCoachResponse, blobToBase64, generateVisualAid } from '../services/geminiService';
 
 interface ConceptCoachProps {
@@ -61,72 +62,24 @@ const ConceptCoach: React.FC<ConceptCoachProps> = ({ initialTopic, onClearTopic 
     setInputText('');
 
     try {
-      let responseText = "";
-
-      // Smart Hybrid Toggle
-      if (navigator.onLine) {
-        const response = await generateCoachResponse(
-          messages.map(m => ({ role: m.role, text: m.text })),
-          text || "Process this audio",
-          mode,
-          language,
-          audioBase64
-        );
-        responseText = response.text;
-      } else {
-        const { offlineAIService } = await import('../services/offlineAiService');
-        
-        try {
-          // Check if supported AND fast enough, otherwise cloud fallback
-          const isSupported = await offlineAIService.isWebGPUSupported();
-          
-          if (isSupported) {
-             if (!await offlineAIService.isModelCached()) {
-                setIsModelLoading(true);
-                offlineAIService.setOnProgress((p) => setModelLoadingProgress(p));
-                
-                // Add a timeout to initialization
-                const initPromise = offlineAIService.init();
-                const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("OFFLINE_TIMEOUT")), 8000));
-                
-                await Promise.race([initPromise, timeoutPromise]);
-                setIsModelLoading(false);
-             }
-             
-             responseText = await offlineAIService.generateResponse([
-                { role: 'system', content: `You are an expert tutor. Mode: ${mode}. Language: ${language}` },
-                ...messages.map(m => ({ role: m.role === 'model' ? 'assistant' : 'user', content: m.text })),
-                { role: 'user', content: text }
-             ] as any);
-          } else {
-             throw new Error("WEBGPU_NOT_SUPPORTED");
-          }
-        } catch (offlineErr: any) {
-          console.warn("Offline failed, falling back to cloud:", offlineErr.message);
-          setIsModelLoading(false);
-          
-          // CRITICAL FALLBACK: Use Online if possible even if "Offline" tab is active
-          const response = await generateCoachResponse(
-            messages.map(m => ({ role: m.role, text: m.text })),
-            text || "Process this audio",
-            mode,
-            language,
-            audioBase64
-          );
-          responseText = response.text;
-        }
-      }
-
+      const response = await generateCoachResponse(
+        messages.map(m => ({ role: m.role, text: m.text })),
+        text || "Process this audio",
+        mode,
+        language,
+        audioBase64
+      );
+      
       const aiMsg: ChatMessage = {
         id: (Date.now() + 1).toString(),
         role: 'model',
-        text: responseText,
+        text: response.text,
         isAudio: true,
         timestamp: Date.now()
       };
 
       setMessages(prev => [...prev, aiMsg]);
-      speakText(responseText);
+      speakText(response.text);
 
     } catch (error: any) {
       console.error(error);
@@ -238,14 +191,7 @@ const ConceptCoach: React.FC<ConceptCoachProps> = ({ initialTopic, onClearTopic 
     const audio = new Audio(`data:audio/wav;base64,${base64}`);
   };
 
-  const getSyncStatus = () => {
-    return (
-      <div className="flex items-center gap-1.5 px-2 py-0.5 bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 rounded-md text-[10px] font-bold border border-green-100 dark:border-green-800/30">
-        <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></div>
-        OFFLINE AI ACTIVE
-      </div>
-    );
-  };
+
 
   return (
     <div className="h-[calc(100vh-64px)] md:h-screen flex flex-col bg-slate-50 dark:bg-slate-950 relative">
@@ -254,12 +200,9 @@ const ConceptCoach: React.FC<ConceptCoachProps> = ({ initialTopic, onClearTopic 
         <div>
           <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
             <Globe className="w-5 h-5 text-indigo-500" />
-            EduClarity Offline Tutor
+            EduClarity AI Tutor
           </h2>
-          <div className="flex items-center gap-2 mt-0.5">
             <p className="text-xs text-slate-500 dark:text-slate-400">Personalized learning in {language}</p>
-            {getSyncStatus()}
-          </div>
         </div>
 
         <div className="flex gap-2 text-sm">
@@ -408,7 +351,7 @@ const ConceptCoach: React.FC<ConceptCoachProps> = ({ initialTopic, onClearTopic 
           </button>
         </div>
         <p className="text-center text-[10px] text-slate-400 dark:text-slate-500 mt-2">
-          AI can make mistakes. EduClarity works entirely on-device for your privacy and accessibility. Hindi, English & regional nuances supported.
+          AI can make mistakes. EduClarity utilizes advanced cloud neural processing for real-time intelligent tutoring. Hindi, English & regional nuances supported.
         </p>
       </div>
     </div>
