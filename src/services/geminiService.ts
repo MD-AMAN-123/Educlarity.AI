@@ -180,6 +180,24 @@ export async function generateCoachResponse(
   ];
 
   try {
+    if (audioBase64 && localGenAI) {
+      // Handle multimodal input if audio is provided
+      for (const modelName of MODEL_PRIORITY) {
+        try {
+          const model = localGenAI.getGenerativeModel({ model: modelName });
+          const result = await model.generateContent([
+            systemPrompt + "\n\nUser has provided a voice message. Please respond based on the audio content or the text message provided.",
+            { inlineData: { data: audioBase64, mimeType: "audio/webm" } },
+            { text: currentMessage }
+          ]);
+          return { text: result.response.text() };
+        } catch (e: any) {
+          console.warn(`Audio model ${modelName} failed:`, e.message);
+          if (modelName === MODEL_PRIORITY[MODEL_PRIORITY.length - 1]) break;
+        }
+      }
+    }
+    
     const text = await callChat(formattedHistory, currentMessage, 'coach');
     return { text };
   } catch (err: any) {
@@ -229,8 +247,9 @@ export async function generateLearningPath(subject: string): Promise<LearningNod
     { id: '1', title: `Basics of ${subject}`, description: 'Fundamentals and core concepts.', status: 'IN_PROGRESS', difficulty: 'Beginner', rationale: 'Every journey starts with a strong foundation.' }
   ];
 
-  const prompt = `Create an 8-milestone learning roadmap for the subject: "${subject}".
-Return ONLY a valid JSON array. No markdown, no code blocks, no explanatory text outside JSON.
+  const prompt = `Create a logical 8-milestone learning roadmap for the subject: "${subject}".
+Return ONLY a valid JSON array. No markdown, no code blocks, no preamble, no chatter.
+The response must be a single array of objects.
 Each object must have exactly these fields:
 [
   {
@@ -243,11 +262,12 @@ Each object must have exactly these fields:
   }
 ]
 Rules:
-- id: string number from "1" to "8"
-- status: one of "MASTERED", "IN_PROGRESS", "UNLOCKED", "LOCKED"
-- difficulty: one of "Beginner", "Intermediate", "Advanced"
-- Return exactly 8 nodes in logical learning order
-- Return ONLY the JSON array, nothing else`;
+1. id: string number from "1" to "8".
+2. status: must be one of ["MASTERED", "IN_PROGRESS", "UNLOCKED", "LOCKED"].
+3. difficulty: must be one of ["Beginner", "Intermediate", "Advanced"].
+4. Return exactly 8 nodes in a strict sequential order.
+5. Provide high-quality, pedagogically sound content.
+6. Return ONLY the raw JSON array.`;
 
   try {
     const text = await callGenerate(prompt, 'roadmap', { prompt });
@@ -265,7 +285,8 @@ Rules:
 
 export async function generateQuiz(topic: string, difficulty: string): Promise<QuizQuestion[]> {
   const prompt = `Generate a 5-question multiple choice quiz about "${topic}" at ${difficulty} difficulty level.
-Return ONLY a valid JSON array. No markdown, no code blocks, no text outside JSON.
+Return ONLY a valid JSON array. No markdown, no code blocks, no preamble.
+The response must be a single array of objects.
 Use this exact structure:
 [
   {
@@ -277,11 +298,11 @@ Use this exact structure:
   }
 ]
 Rules:
-- id: number starting from 1
-- options: exactly 4 choices
-- correctAnswerIndex: 0-based index (0, 1, 2, or 3)
-- Return exactly 5 questions
-- Return ONLY the JSON array`;
+1. id: unique number starting from 1.
+2. options: exactly 4 choices.
+3. correctAnswerIndex: 0-based index (0, 1, 2, or 3).
+4. Return exactly 5 high-quality educational questions.
+5. Return ONLY the raw JSON array.`;
 
   try {
     const text = await callGenerate(prompt, 'quiz', { prompt });
@@ -307,7 +328,7 @@ export async function solveQuestionFromImage(
         try {
           const model = localGenAI.getGenerativeModel({ model: modelName });
           const result = await model.generateContent([
-            "Solve this question shown in the image. Return ONLY valid JSON with no markdown: {\"topic\": \"...\", \"answer\": \"...\", \"steps\": [\"step1\", \"step2\"]}",
+            "Analyze and solve the question shown in the image. Be extremely precise. Return ONLY valid JSON with no markdown and no extra text. The 'steps' should be a clear, pedagogical breakdown. \n\nExpected Format: {\"topic\": \"...\", \"answer\": \"...\", \"steps\": [\"step1\", \"step2\"]}",
             { inlineData: { data: base64Image, mimeType: "image/jpeg" } }
           ]);
           return safeParse(result.response.text(), fallback);
@@ -356,9 +377,10 @@ Valid type values: "success", "warning", "info". Return exactly 3 items.`;
 ================================ */
 
 export async function generateVisualAid(topic: string): Promise<string | undefined> {
-  const prompt = `Explain the concept of "${topic}" in a clear, educational way.
-Use ASCII diagrams, structured bullet points, or simple analogies to make it visual.
-Keep the explanation concise (under 300 words) and suitable for students.`;
+  const prompt = `Explain the concept of "${topic}" using a combination of clear text and ASCII art diagrams or structured layouts to help a student visualize it.
+Since you cannot generate real images, use your best text-based visualization techniques (like flowcharts, tables, or structural diagrams made of characters).
+Keep it concise, educational, and highly visual.
+Return the response as a single string of text.`;
   try {
     return await callGenerate(prompt, 'visual', { prompt });
   } catch { return undefined; }

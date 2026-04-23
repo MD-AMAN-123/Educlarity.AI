@@ -108,13 +108,13 @@ const ConceptCoach: React.FC<ConceptCoachProps> = ({ initialTopic, onClearTopic 
     const placeholderId = 'generating-image';
 
     try {
-      const imageData = await generateVisualAid(lastContext.substring(0, 100)); // pass simplified topic
-      if (imageData) {
+      const visualData = await generateVisualAid(lastContext.substring(0, 100)); // pass simplified topic
+      if (visualData) {
         const visualMsg: ChatMessage = {
           id: Date.now().toString(),
           role: 'model',
-          text: 'Here is a visual aid to help you understand better:',
-          imageData: imageData,
+          text: 'Here is a visual representation to help you understand better:',
+          visualAid: visualData,
           timestamp: Date.now()
         };
         setMessages(prev => [...prev, visualMsg]);
@@ -240,6 +240,14 @@ const ConceptCoach: React.FC<ConceptCoachProps> = ({ initialTopic, onClearTopic 
               }`}>
               {msg.text && <p className="leading-relaxed whitespace-pre-wrap" dir="auto">{msg.text}</p>}
 
+              {msg.visualAid && (
+                <div className="mt-3 p-4 bg-slate-900 rounded-xl border border-slate-700 shadow-inner overflow-x-auto">
+                  <pre className="text-[10px] md:text-xs text-indigo-400 font-mono leading-tight whitespace-pre">
+                    {msg.visualAid}
+                  </pre>
+                </div>
+              )}
+
               {msg.imageData && (
                 <div className="mt-3">
                   <img
@@ -261,7 +269,7 @@ const ConceptCoach: React.FC<ConceptCoachProps> = ({ initialTopic, onClearTopic 
             </div>
 
             {/* Visual Aid Trigger */}
-            {msg.role === 'model' && !msg.imageData && !msg.isAudio && (
+            {msg.role === 'model' && !msg.visualAid && !msg.imageData && !msg.isAudio && (
               <button
                 onClick={handleGenerateVisual}
                 className="mt-1 ml-2 text-xs text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 flex items-center gap-1"

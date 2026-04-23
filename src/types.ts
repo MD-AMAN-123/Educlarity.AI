@@ -30,6 +30,7 @@ export interface ChatMessage {
   text: string;
   audioData?: string; // base64
   imageData?: string; // base64 for generated images
+  visualAid?: string; // ASCII or text-based visualization
   isAudio?: boolean;
   timestamp: number;
 }
