@@ -60,13 +60,28 @@ async function callDirectGenerate(prompt: string): Promise<string> {
 
 async function callDirectChat(
   history: { role: string; parts: { text: string }[] }[],
-  message: string
+  message: string,
+  systemInstruction?: string
 ): Promise<string> {
   if (!localGenAI) throw new Error("No Gemini API key found. Set VITE_GEMINI_API_KEY.");
   for (const modelName of MODEL_PRIORITY) {
     try {
-      const model = localGenAI.getGenerativeModel({ model: modelName });
-      const chat = model.startChat({ history });
+      const model = localGenAI.getGenerativeModel({ 
+        model: modelName,
+        systemInstruction: systemInstruction ? { role: 'system', parts: [{ text: systemInstruction }] } : undefined
+      });
+      
+      // Gemini SDK Requirement: History must strictly alternate AND start with 'user'
+      let cleanedHistory: any[] = [];
+      history.forEach((item) => {
+        if (cleanedHistory.length === 0) {
+          if (item.role === 'user') cleanedHistory.push(item);
+        } else if (item.role !== cleanedHistory[cleanedHistory.length - 1].role) {
+          cleanedHistory.push(item);
+        }
+      });
+
+      const chat = model.startChat({ history: cleanedHistory });
       const result = await chat.sendMessage(message);
       return result.response.text();
     } catch (err: any) {
@@ -115,16 +130,17 @@ async function callGenerate(prompt: string, backendTask?: string, backendPayload
 async function callChat(
   history: { role: string; parts: { text: string }[] }[],
   message: string,
-  backendTask?: string
+  backendTask?: string,
+  systemInstruction?: string
 ): Promise<string> {
   // Try direct first
   try {
-    return await callDirectChat(history, message);
+    return await callDirectChat(history, message, systemInstruction);
   } catch (directErr: any) {
     console.warn("Direct chat failed, trying backend proxy:", directErr.message);
   }
   // Fallback: backend proxy
-  const data = await callAIBackend(backendTask || 'coach', { history, message });
+  const data = await callAIBackend(backendTask || 'coach', { history, message, systemInstruction });
   return data.text;
 }
 
@@ -170,23 +186,22 @@ export async function generateCoachResponse(
     ? `You are "${bot.name}", specializing in ${bot.subject}. Personality: ${bot.personality}. Respond in ${language}.`
     : `You are "EduClarity AI", a conceptual coach. Mode: ${mode}. Language: ${language}. Use the Socratic method. Be concise but thorough.`;
 
-  const formattedHistory = [
-    { role: "user", parts: [{ text: systemPrompt }] },
-    { role: "model", parts: [{ text: "Understood. I am EduClarity AI, your conceptual coach. How can I help you today?" }] },
-    ...history.map(h => ({
-      role: h.role === "model" ? "model" : "user",
-      parts: [{ text: h.text }]
-    }))
-  ];
+  const formattedHistory = history.map(h => ({
+    role: h.role === "model" ? "model" : "user",
+    parts: [{ text: h.text }]
+  }));
 
   try {
     if (audioBase64 && localGenAI) {
       // Handle multimodal input if audio is provided
       for (const modelName of MODEL_PRIORITY) {
         try {
-          const model = localGenAI.getGenerativeModel({ model: modelName });
+          const model = localGenAI.getGenerativeModel({ 
+            model: modelName,
+            systemInstruction: { role: 'system', parts: [{ text: systemPrompt }] }
+          });
           const result = await model.generateContent([
-            systemPrompt + "\n\nUser has provided a voice message. Please respond based on the audio content or the text message provided.",
+            "User has provided a voice message. Please respond based on the audio content or the text message provided.",
             { inlineData: { data: audioBase64, mimeType: "audio/webm" } },
             { text: currentMessage }
           ]);
@@ -198,11 +213,15 @@ export async function generateCoachResponse(
       }
     }
     
-    const text = await callChat(formattedHistory, currentMessage, 'coach');
+    const text = await callChat(formattedHistory, currentMessage, 'coach', systemPrompt);
     return { text };
   } catch (err: any) {
     console.error("generateCoachResponse error:", err);
-    return { text: "I'm having trouble connecting right now. Please check your internet connection and try again." };
+    const errorMessage = err.message || "";
+    if (errorMessage.includes("API_KEY_INVALID") || errorMessage.includes("key not found")) {
+      return { text: "Invalid API Key. Please check your .env.local file and restart the server." };
+    }
+    return { text: "Connection error. Please ensure your API key is correct and you have a stable internet connection." };
   }
 }
 
@@ -224,15 +243,11 @@ export async function generateSupportResponse(
       ? students.map(s => `- ${s.name} (ID: ${s.id}, Grade: ${s.grade})`).join('\n')
       : "No students listed.";
     const systemPrompt = `You are the EduClarity Support Bot. Student Data:\n${studentList}`;
-    const formattedHistory = [
-      { role: "user", parts: [{ text: systemPrompt }] },
-      { role: "model", parts: [{ text: "Understood. I am ready to assist." }] },
-      ...history.map(h => ({
-        role: h.role === "model" ? "model" : "user",
-        parts: [{ text: h.text }]
-      }))
-    ];
-    return await callChat(formattedHistory, message, 'support');
+    const formattedHistory = history.map(h => ({
+      role: h.role === "model" ? "model" : "user",
+      parts: [{ text: h.text }]
+    }));
+    return await callChat(formattedHistory, message, 'support', systemPrompt);
   } catch {
     return "Support unavailable. Please try again.";
   }
