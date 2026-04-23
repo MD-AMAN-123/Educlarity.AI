@@ -19,7 +19,9 @@ export const logUserLogin = async (user: User) => {
       ]);
 
     if (error) {
-      console.error('Error logging user login:', error.message);
+      if (error.code !== '42P01') {
+        console.warn('Login logging unavailable:', error.message);
+      }
     }
   } catch (err) {
     console.error('Failed to log user login:', err);

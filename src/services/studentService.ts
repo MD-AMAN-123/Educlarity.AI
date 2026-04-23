@@ -3,25 +3,24 @@ import { Student } from '../types';
 
 export const fetchStudents = async (userId?: string): Promise<Student[]> => {
   try {
-    let query = supabase
+    const { data, error } = await supabase
       .from('students')
       .select('*')
       .order('created_at', { ascending: false });
     
-    if (userId) {
-      query = query.eq('user_id', userId);
+    if (error) {
+      console.warn('Supabase fetch error (likely schema mismatch):', error.message);
+      return [];
     }
     
-    const { data, error } = await query;
-    
-    if (error) {
-      console.warn('Supabase fetch error:', error.message);
-      return [];
+    // Manual filter to be resilient to missing user_id column
+    if (userId && data && data.length > 0 && 'user_id' in data[0]) {
+      return (data as any[]).filter(s => s.user_id === userId) as Student[];
     }
     
     return (data as Student[]) || [];
   } catch (err) {
-    console.warn('Network error fetching students.');
+    console.warn('Network error or schema mismatch fetching students.');
     return [];
   }
 };

@@ -10,8 +10,9 @@ export const fetchUserStats = async (userId: string): Promise<DashboardStats | n
       .single();
 
     if (error) {
-      if (error.code !== 'PGRST116') { // PGRST116 is "no rows returned"
-        console.error('Error fetching user stats:', error.message);
+      // Handle missing table (42P01) or other schema errors silently as they use local mocks
+      if (error.code !== 'PGRST116' && error.code !== '42P01') { 
+        console.warn('User stats storage unavailable (using local defaults):', error.message);
       }
       return null;
     }
@@ -30,7 +31,9 @@ export const saveUserStats = async (userId: string, stats: DashboardStats) => {
       .upsert({ user_id: userId, stats, updated_at: new Date().toISOString() });
 
     if (error) {
-      console.error('Error saving user stats:', error.message);
+      if (error.code !== '42P01') {
+        console.warn('Error saving user stats:', error.message);
+      }
     }
   } catch (err) {
     console.error('Failed to save user stats:', err);

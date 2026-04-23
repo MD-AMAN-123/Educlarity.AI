@@ -18,36 +18,29 @@ import type {
    Works in both local dev & production.
 ================================ */
 
-const getLocalKey = () => {
-  try {
-    return (import.meta.env.VITE_GEMINI_API_KEY || "").trim();
-  } catch {
-    return "";
-  }
-};
+const MODEL_PRIORITY = ["gemini-1.5-flash", "gemini-1.5-flash-latest", "gemini-1.5-pro"];
 
-const localKey = getLocalKey();
-let localGenAI: any = null;
-if (localKey && localKey.length > 10) {
+function getGenAI() {
+  const key = (import.meta.env.VITE_GEMINI_API_KEY || "").trim();
+  if (!key || key.length < 10) return null;
   try {
-    localGenAI = new GoogleGenerativeAI(localKey);
+    return new GoogleGenerativeAI(key);
   } catch (e) {
-    console.warn("Local AI Init failed:", e);
+    console.warn("AI Initialization error:", e);
+    return null;
   }
 }
-
-// Current, working Gemini models only — no deprecated names
-const MODEL_PRIORITY = ["gemini-1.5-flash", "gemini-1.5-flash-latest", "gemini-1.5-pro"];
 
 /* ===============================
    HELPERS
 ================================ */
 
 async function callDirectGenerate(prompt: string): Promise<string> {
-  if (!localGenAI) throw new Error("No Gemini API key found. Set VITE_GEMINI_API_KEY.");
+  const genAI = getGenAI();
+  if (!genAI) throw new Error("No Gemini API key found. Set VITE_GEMINI_API_KEY.");
   for (const modelName of MODEL_PRIORITY) {
     try {
-      const model = localGenAI.getGenerativeModel({ model: modelName });
+      const model = genAI.getGenerativeModel({ model: modelName });
       const result = await model.generateContent(prompt);
       return result.response.text();
     } catch (err: any) {
@@ -63,25 +56,29 @@ async function callDirectChat(
   message: string,
   systemInstruction?: string
 ): Promise<string> {
-  if (!localGenAI) throw new Error("No Gemini API key found. Set VITE_GEMINI_API_KEY.");
+  const genAI = getGenAI();
+  if (!genAI) throw new Error("No Gemini API key found. Set VITE_GEMINI_API_KEY.");
   for (const modelName of MODEL_PRIORITY) {
     try {
-      const model = localGenAI.getGenerativeModel({ 
+      const model = genAI.getGenerativeModel({ 
         model: modelName,
         systemInstruction: systemInstruction ? { role: 'system', parts: [{ text: systemInstruction }] } : undefined
       });
       
-      // Gemini SDK Requirement: History must strictly alternate AND start with 'user'
+      // GEMINI REQUIREMENT: History must start with 'user' and alternate roles
       let cleanedHistory: any[] = [];
-      history.forEach((item) => {
-        if (cleanedHistory.length === 0) {
+      for (const item of history) {
+        const lastItem = cleanedHistory[cleanedHistory.length - 1];
+        if (!lastItem) {
           if (item.role === 'user') cleanedHistory.push(item);
-        } else if (item.role !== cleanedHistory[cleanedHistory.length - 1].role) {
+        } else if (item.role !== lastItem.role) {
           cleanedHistory.push(item);
         }
-      });
+      }
 
-      const chat = model.startChat({ history: cleanedHistory });
+      const chat = model.startChat({ 
+        history: cleanedHistory.length > 0 ? cleanedHistory : [] 
+      });
       const result = await chat.sendMessage(message);
       return result.response.text();
     } catch (err: any) {
@@ -192,16 +189,17 @@ export async function generateCoachResponse(
   }));
 
   try {
-    if (audioBase64 && localGenAI) {
+    const genAI = getGenAI();
+    if (audioBase64 && genAI) {
       // Handle multimodal input if audio is provided
       for (const modelName of MODEL_PRIORITY) {
         try {
-          const model = localGenAI.getGenerativeModel({ 
+          const model = genAI.getGenerativeModel({ 
             model: modelName,
             systemInstruction: { role: 'system', parts: [{ text: systemPrompt }] }
           });
           const result = await model.generateContent([
-            "User has provided a voice message. Please respond based on the audio content or the text message provided.",
+            "User voice message. Respond appropriately.",
             { inlineData: { data: audioBase64, mimeType: "audio/webm" } },
             { text: currentMessage }
           ]);
@@ -338,12 +336,13 @@ export async function solveQuestionFromImage(
 ): Promise<{ topic: string, answer: string, steps: string[] }> {
   const fallback = { topic: "Analysis", answer: "Failed to analyze image.", steps: ["Please try again with a clearer image."] };
   try {
-    if (localGenAI) {
+    const genAI = getGenAI();
+    if (genAI) {
       for (const modelName of MODEL_PRIORITY) {
         try {
-          const model = localGenAI.getGenerativeModel({ model: modelName });
+          const model = genAI.getGenerativeModel({ model: modelName });
           const result = await model.generateContent([
-            "Analyze and solve the question shown in the image. Be extremely precise. Return ONLY valid JSON with no markdown and no extra text. The 'steps' should be a clear, pedagogical breakdown. \n\nExpected Format: {\"topic\": \"...\", \"answer\": \"...\", \"steps\": [\"step1\", \"step2\"]}",
+            "Analyze and solve the question shown in the image. Return ONLY valid JSON: {\"topic\": \"...\", \"answer\": \"...\", \"steps\": [\"step1\", \"step2\"]}",
             { inlineData: { data: base64Image, mimeType: "image/jpeg" } }
           ]);
           return safeParse(result.response.text(), fallback);
