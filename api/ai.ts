@@ -3,8 +3,8 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 const apiKey = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY;
 const genAI = apiKey ? new GoogleGenerativeAI(apiKey) : null;
 
-// The list of models to try in order of priority
-const MODEL_PRIORITY = ["gemini-pro", "gemini-1.5-flash", "gemini-1.5-pro"];
+// The list of models to try in order of priority (no deprecated names)
+const MODEL_PRIORITY = ["gemini-1.5-flash", "gemini-1.5-flash-latest", "gemini-1.5-pro"];
 
 export default async function handler(req: any, res: any) {
   if (req.method !== 'POST') {
