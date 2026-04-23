@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Send, Mic, Play, Square, Loader2, Volume2, Globe, ImageIcon, Sparkles } from '../icons';
 import { CoachMode, Language } from '../types';
 import type { ChatMessage } from '../types';
-import { generateCoachResponse, blobToBase64, generateVisualAid } from '../services/geminiService';
+import { streamCoachResponse, blobToBase64, generateVisualAid } from '../services/geminiService';
 
 interface ConceptCoachProps {
   initialTopic?: string;
@@ -61,24 +61,34 @@ const ConceptCoach: React.FC<ConceptCoachProps> = ({ initialTopic, onClearTopic 
     setInputText('');
 
     try {
-      const response = await generateCoachResponse(
-        messages.map(m => ({ role: m.role, text: m.text })),
-        text || "Process this audio",
-        mode,
-        language,
-        audioBase64
-      );
-
-      const aiMsg: ChatMessage = {
+      const assistantMsg: ChatMessage = {
         id: (Date.now() + 1).toString(),
-        role: 'model',
-        text: response.text,
-        isAudio: true,
-        timestamp: Date.now()
+        role: "model",
+        text: "Thinking...",
+        timestamp: Date.now(),
       };
+      setMessages(prev => [...prev, assistantMsg]);
 
-      setMessages(prev => [...prev, aiMsg]);
-      speakText(response.text);
+      try {
+        await streamCoachResponse(
+          messages.map(m => ({ role: m.role, text: m.text })),
+          text || "Process this audio",
+          mode,
+          language,
+          (chunk) => {
+            setMessages(prev => prev.map(m =>
+              m.id === assistantMsg.id ? { ...m, text: chunk } : m
+            ));
+          },
+          undefined, // selectedBot (not currently used in this component scope)
+          audioBase64
+        );
+        speakText(assistantMsg.text);
+      } catch (err: any) {
+        setMessages(prev => prev.map(m =>
+          m.id === assistantMsg.id ? { ...m, text: `AI Error: ${err.message || 'Connection failed'}` } : m
+        ));
+      }
 
     } catch (error: any) {
       console.error(error);

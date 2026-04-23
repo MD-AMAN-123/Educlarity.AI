@@ -1,60 +1,67 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
-const apiKey = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY;
-const genAI = apiKey ? new GoogleGenerativeAI(apiKey) : null;
+export const config = {
+  runtime: "edge",
+};
 
-// The list of models to try in order of priority (no deprecated names)
-const MODEL_PRIORITY = ["gemini-1.5-flash", "gemini-1.5-flash-latest", "gemini-1.5-pro"];
-
-export default async function handler(req: any, res: any) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
+export default async function handler(req: Request) {
+  if (req.method !== "POST") {
+    return new Response(JSON.stringify({ error: "Method not allowed" }), { status: 405 });
   }
 
-  if (!genAI) {
-    return res.status(500).json({ error: 'AI Service not configured on server. Please set GEMINI_API_KEY in Vercel settings.' });
+  const apiKey = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY;
+  if (!apiKey) {
+    return new Response(JSON.stringify({ error: "AI Service not configured on server." }), { status: 500 });
   }
 
-  const { task, payload } = req.body;
+  const genAI = new GoogleGenerativeAI(apiKey);
+  const { task, payload } = await req.json();
 
-  // Try each model until one works
-  for (const modelName of MODEL_PRIORITY) {
-    try {
-      const model = genAI.getGenerativeModel({ model: modelName });
+  try {
+    const model = genAI.getGenerativeModel({ 
+      model: payload.model || "gemini-1.5-flash",
+      systemInstruction: payload.systemInstruction 
+    });
 
-      switch (task) {
-        case 'coach':
-        case 'support':
-          const chat = model.startChat({ history: payload.history });
-          const chatResult = await chat.sendMessage(payload.message);
-          return res.status(200).json({ text: chatResult.response.text() });
-
-        case 'roadmap':
-        case 'quiz':
-        case 'insights':
-        case 'assignment':
-        case 'originality':
-        case 'visual':
-          const genRes = await model.generateContent(payload.prompt);
-          return res.status(200).json({ text: genRes.response.text() });
-
-        case 'vision':
-          const visionRes = await model.generateContent([
-            payload.prompt,
-            { inlineData: { data: payload.image, mimeType: "image/jpeg" } }
-          ]);
-          return res.status(200).json({ text: visionRes.response.text() });
+    if (payload.stream) {
+      const result = await model.generateContentStream({ contents: payload.contents });
+      const encoder = new TextEncoder();
+      const stream = new ReadableStream({
+        async start(controller) {
+          for await (const chunk of result.stream) {
+            controller.enqueue(encoder.encode(chunk.text()));
+          }
+          controller.close();
+        },
+      });
+      return new Response(stream);
+    } else {
+      let result;
+      if (task === 'vision') {
+        result = await model.generateContent([
+          payload.prompt,
+          { inlineData: { data: payload.image, mimeType: "image/jpeg" } }
+        ]);
+      } else if (payload.contents) {
+        result = await model.generateContent({ contents: payload.contents });
+      } else {
+        result = await model.generateContent(payload.prompt);
       }
-    } catch (error: any) {
-      console.warn(`Model ${modelName} failed:`, error.message);
-      // If this was the last model, throw the error
-      if (modelName === MODEL_PRIORITY[MODEL_PRIORITY.length - 1]) {
-        return res.status(500).json({ error: `AI Error: All models failed. ${error.message}` });
+      
+      const response = await result.response;
+      let text = response.text();
+      
+      // Clean up JSON if Gemini wrapped it in markdown
+      if (text.includes("```")) {
+        text = text.replace(/```json|```/g, "").trim();
       }
-      // Otherwise, continue to the next model in the loop
-      continue;
+
+      return new Response(JSON.stringify({ text }), {
+        headers: { "Content-Type": "application/json" },
+      });
     }
+  } catch (error: any) {
+    console.error("Backend AI Error:", error);
+    return new Response(JSON.stringify({ error: error.message }), { status: 500 });
   }
-
-  return res.status(500).json({ error: 'AI Error: No models available.' });
 }
