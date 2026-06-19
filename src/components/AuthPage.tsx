@@ -247,9 +247,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ onLogin }) => {
           0%, 100% { opacity: 0.1; transform: scale(1); }
           50% { opacity: 0.3; transform: scale(1.1); }
         }
-        .right-8 {
-          right: 0rem !important; /* using !important to override tailwind's inline or linked utility classes effectively if needed */
-        }
+        /* removed custom .right-8 override so Tailwind spacing applies correctly */
       `}</style>
     </div>
   );
