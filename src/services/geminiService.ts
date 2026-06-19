@@ -171,3 +171,38 @@ export const blobToBase64 = (blob: Blob): Promise<string> => {
     reader.readAsDataURL(blob);
   });
 };
+
+// TEACHER INSIGHTS (Used by TeacherDashboard)
+export async function generateTeacherInsights(classDataJson: string): Promise<TeacherInsight[]> {
+  const res = await callAIBackend('teacher_insights', { prompt: `Analyze this class data and return an array of teacher insights in JSON format: ${classDataJson}` });
+  return JSON.parse(res.text);
+}
+
+// ASSIGNMENT GENERATOR (Used by TeacherDashboard)
+export async function generateAssignment(topic: string): Promise<Assignment> {
+  const res = await callAIBackend('assignment', { prompt: `Generate a creative assignment for the topic: "${topic}" in JSON format with keys: title, tasks (array), deadline.` });
+  return JSON.parse(res.text);
+}
+
+// SUPPORT BOT RESPONSE (Used by CustomerSupport)
+export async function generateSupportResponse(
+  history: { role: string; text: string }[],
+  currentMessage: string,
+  students?: any[],
+  actions?: Record<string, Function>
+): Promise<string> {
+  const payload: any = { history, message: currentMessage };
+  if (students) payload.students = students;
+  // Note: actions cannot be serialized; we send action names only for context
+  if (actions) payload.availableActions = Object.keys(actions);
+
+  const res = await callAIBackend('support', { prompt: JSON.stringify(payload) });
+  // Expect plain text response
+  return res.text || '';
+}
+
+// DASHBOARD INSIGHTS (Used by App.tsx)
+export async function generateDashboardInsights(userName: string, stats: DashboardStats): Promise<AIInsight[]> {
+  const res = await callAIBackend('dashboard_insights', { prompt: JSON.stringify({ user: userName, stats }) });
+  return JSON.parse(res.text);
+}
